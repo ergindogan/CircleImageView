@@ -1,5 +1,9 @@
 package volkanatalan.circleimageview.views;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.TimeInterpolator;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -8,9 +12,14 @@ import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.CountDownTimer;
+import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v4.graphics.drawable.RoundedBitmapDrawable;
 import android.support.v7.widget.AppCompatImageView;
@@ -20,13 +29,19 @@ import volkanatalan.library.Calc;
 
 public class CircleImageView extends AppCompatImageView {
   Context context;
-  private Bitmap bitmap;
-  private Paint paintImage, paintBorder;
+  private Bitmap bitmap, bitmapReflection;
+  private Path pathReflection;
+  private Paint paintImage, paintBorder, paintReflection, paintReflectionCircle;
   private BitmapShader bitmapShader;
-  private int imageWidth, imageHeight, borderWidth, diameter;
+  private float imageWidth, imageHeight, borderWidth, diameter, center;
   private float shadowRadius = 4f, shadowDX = 2f, shadowDY = 2f;
+  private int animationDuration = 500;
+  private int animationRepeatDelay = 5000;
+  private int reflectionLeft = 0;
   private int shadowColor = Color.BLACK;
   private boolean isImageSet = false;
+  private Handler handler;
+  private Runnable runnable;
   
   public CircleImageView(Context context) {
     super(context);
@@ -51,14 +66,25 @@ public class CircleImageView extends AppCompatImageView {
     
     setAttrs();
     
-    paintImage = new Paint();
-    paintImage.setAntiAlias(true);
+    paintImage = new Paint(Paint.ANTI_ALIAS_FLAG);
+    paintImage.setDither(true);
     
-    paintBorder = new Paint();
+    paintBorder = new Paint(Paint.ANTI_ALIAS_FLAG);
+    paintBorder.setDither(true);
     paintBorder.setColor(Color.BLACK);
-    paintBorder.setAntiAlias(true);
     this.setLayerType(LAYER_TYPE_SOFTWARE, paintBorder);
     paintBorder.setShadowLayer(shadowRadius, shadowDX, shadowDY, shadowColor);
+  
+    paintReflection = new Paint(Paint.ANTI_ALIAS_FLAG);
+    paintReflection.setDither(true);
+    paintReflection.setColor(Color.WHITE);
+  
+    paintReflectionCircle = new Paint(Paint.ANTI_ALIAS_FLAG);
+    paintReflectionCircle.setDither(true);
+    paintReflectionCircle.setColor(Color.WHITE);
+    paintReflectionCircle.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
+  
+    handler = new Handler();
   }
   
   @Override
@@ -67,8 +93,8 @@ public class CircleImageView extends AppCompatImageView {
     int height = measureDimensions(heightMeasureSpec, widthMeasureSpec);
     diameter = Math.min(width, height);
     
-    imageWidth = width - (borderWidth * 2);
-    imageHeight = height - (borderWidth * 2);
+    imageWidth = width - (borderWidth * 2) - shadowRadius;
+    imageHeight = height - (borderWidth * 2) - shadowRadius;
     
     setMeasuredDimension(width, height);
   }
@@ -76,10 +102,10 @@ public class CircleImageView extends AppCompatImageView {
   private int measureDimensions(int requiredMeasureSpec, int otherMeasureSpec) {
     int requiredMeasureSpecMode = MeasureSpec.getMode(requiredMeasureSpec);
     int requiredMeasureSpecSize = MeasureSpec.getSize(requiredMeasureSpec);
-  
+    
     int otherMeasureSpecMode = MeasureSpec.getMode(otherMeasureSpec);
     int otherMeasureSpecSize = MeasureSpec.getSize(otherMeasureSpec);
-  
+    
     if (otherMeasureSpecMode == MeasureSpec.EXACTLY &&
             requiredMeasureSpecMode == MeasureSpec.AT_MOST) {
       return otherMeasureSpecSize;
@@ -92,23 +118,73 @@ public class CircleImageView extends AppCompatImageView {
     }
   }
   
+  @Override
+  protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+    super.onSizeChanged(w, h, oldw, oldh);
+  
+    float centerX = imageWidth / 2;
+    float centerY = imageHeight / 2;
+    center = Math.min(centerX, centerY);
+    
+    bitmapReflection = Bitmap.createBitmap(w / 2, h, Bitmap.Config.ALPHA_8);
+    Canvas canvasReflection = new Canvas(bitmapReflection);
+    
+    pathReflection = new Path();
+    pathReflection.moveTo(0, h);
+    pathReflection.lineTo(bitmapReflection.getWidth() - bitmapReflection.getWidth()/2, 0);
+    pathReflection.lineTo(bitmapReflection.getWidth(), 0);
+    pathReflection.lineTo(bitmapReflection.getWidth() / 2, h);
+    pathReflection.close();
+  
+    canvasReflection.drawCircle(center, center, center, paintReflectionCircle);
+    canvasReflection.drawPath(pathReflection, paintReflection);
+  
+    final ValueAnimator reflectionXAnimator = ValueAnimator.ofInt((int) imageWidth, 0 - bitmapReflection.getWidth());
+    reflectionXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+      @Override
+      public void onAnimationUpdate(ValueAnimator valueAnimator) {
+        reflectionLeft = (int) valueAnimator.getAnimatedValue();
+        invalidate();
+      }
+    });
+    reflectionXAnimator.setDuration(animationDuration);
+
+// Define the code block to be executed
+    runnable = new Runnable() {
+      @Override
+      public void run() {
+        // Insert custom code here
+        reflectionXAnimator.start();
+        // Repeat every 2 seconds
+        handler.postDelayed(runnable, animationRepeatDelay);
+      }
+    };
+
+// Start the Runnable immediately
+    handler.post(runnable);
+  }
+  
   @SuppressLint("DrawAllocation")
   @Override
   protected void onDraw(Canvas canvas) {
     loadBitmap();
     
     if (bitmap != null) {
-      int centerX = imageWidth / 2;
-      int centerY = imageHeight / 2;
-      int bitmapWidth = bitmap.getWidth();
-      int bitmapHeight = bitmap.getHeight();
+      float bitmapWidth = bitmap.getWidth();
+      float bitmapHeight = bitmap.getHeight();
+      float rateOfMin = diameter / Math.min(bitmapHeight, bitmapWidth);
+      float scaledBitmapWidth = rateOfMin * bitmapWidth;
+      float scaledBitmapHeight = rateOfMin * bitmapHeight;
       
-      bitmapShader = new BitmapShader(Bitmap.createBitmap(bitmap), Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+      bitmap = Bitmap.createScaledBitmap(
+          bitmap, (int) scaledBitmapWidth, (int) scaledBitmapHeight, false);
+      bitmapShader = new BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
       paintImage.setShader(bitmapShader);
-      
-      int radius = Math.min(centerX, centerY);
-      canvas.drawCircle(centerX + borderWidth, centerY + borderWidth, radius + borderWidth - shadowRadius, paintBorder);
-      canvas.drawCircle(centerX + borderWidth, centerY + borderWidth, radius - shadowRadius, paintImage);
+  
+      float radius = center;
+      canvas.drawCircle(center + borderWidth, center + borderWidth, radius + borderWidth - shadowRadius, paintBorder);
+      canvas.drawCircle(center + borderWidth, center + borderWidth, radius - shadowRadius, paintImage);
+      canvas.drawBitmap(bitmapReflection, reflectionLeft, 0, paintReflectionCircle);
     }
   }
   
