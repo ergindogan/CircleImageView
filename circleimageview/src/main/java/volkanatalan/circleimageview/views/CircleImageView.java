@@ -108,10 +108,13 @@ public class CircleImageView extends AppCompatImageView {
     
     if (otherMeasureSpecMode == MeasureSpec.EXACTLY &&
             requiredMeasureSpecMode == MeasureSpec.AT_MOST) {
-      return otherMeasureSpecSize;
+      if (otherMeasureSpecSize < requiredMeasureSpecSize) {
+        return otherMeasureSpecSize;
+      } else { return requiredMeasureSpecSize; }
     } else if (requiredMeasureSpecMode == MeasureSpec.EXACTLY) {
       return requiredMeasureSpecSize;
-    } else if (otherMeasureSpecMode == MeasureSpec.AT_MOST && requiredMeasureSpecMode == MeasureSpec.AT_MOST) {
+    } else if (otherMeasureSpecMode == MeasureSpec.AT_MOST &&
+            requiredMeasureSpecMode == MeasureSpec.AT_MOST) {
       return Math.min(requiredMeasureSpecSize, otherMeasureSpecSize);
     } else {
       return requiredMeasureSpecSize;
@@ -149,7 +152,7 @@ public class CircleImageView extends AppCompatImageView {
     });
     reflectionXAnimator.setDuration(animationDuration);
 
-// Define the code block to be executed
+    // Define the code block to be executed
     runnable = new Runnable() {
       @Override
       public void run() {
@@ -160,7 +163,7 @@ public class CircleImageView extends AppCompatImageView {
       }
     };
 
-// Start the Runnable immediately
+    // Start the Runnable immediately
     handler.post(runnable);
   }
   
