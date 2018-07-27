@@ -26,16 +26,12 @@ import volkanatalan.library.Calc;
 public class CircleImageView extends AppCompatImageView {
   Context context;
   private Bitmap uBitmapImage, uBitmapReflection;
-  private Path uPathReflection;
   private Paint uPaint, uPaintImage;
-  private BitmapShader uBitmapShader;
   private Handler uHandler;
   private Runnable uRunnable;
   private ValueAnimator uReflectionXAnimator;
   private PorterDuffXfermode DST_OUT = new PorterDuffXfermode(PorterDuff.Mode.DST_OUT);
   private boolean uIsImageSet = false;
-  
-  private int uDiameter, uRadius, uCenterX, uCenterY;
   
   private int uShadowXDiff = 10, uShadowYDiff = 10, uShadowSize = 0;
   private int uShadowCX, uShadowCY, uShadowRadius, uShadowDiameter;
@@ -43,10 +39,13 @@ public class CircleImageView extends AppCompatImageView {
   private boolean uShowShadow = true;
   
   private int uBorderColor = Color.BLACK;
-  private int uBorderCX, uBorderCY, uBorderDiameter, uBorderRadius, uBorderThickness;
+  private int uBorderCX;
+  private int uBorderCY;
+  private int uBorderRadius;
+  private int uBorderThickness;
   private boolean uShowBorder = true;
   
-  private int uImageCX, uImageCY, uImageRadius, uImageDiameter;
+  private int uImageCX, uImageCY, uImageRadius;
   
   private int uReflectionColor = Color.WHITE;
   private int uReflectionAlpha = 245;
@@ -135,32 +134,31 @@ public class CircleImageView extends AppCompatImageView {
   
   @Override
   protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-    uDiameter = Math.min(w, h);
-    uRadius = uDiameter / 2;
-    uCenterX = uRadius;
-    uCenterY = uRadius;
+    int diameter = Math.min(w, h);
+    int radius = diameter / 2;
+    int centerX = radius;
+    int centerY = radius;
   
-    uShadowCX = uCenterX + uShadowXDiff;
-    uShadowCY = uCenterY + uShadowYDiff;
-    uShadowRadius = uRadius + uShadowSize;
-    uShadowDiameter = uDiameter + uShadowSize;
+    uShadowCX = centerX + uShadowXDiff;
+    uShadowCY = centerY + uShadowYDiff;
+    uShadowRadius = radius + uShadowSize;
+    uShadowDiameter = diameter + uShadowSize;
   
-    // TODO uBorderCX = uCenterX +- (PADDINGS);
-    uBorderCX = uCenterX;
-    // TODO uBorderCY = uCenterY +- (PADDINGS);
-    uBorderCY = uCenterY;
-    // TODO uBorderDiameter = uDiameter - (PADDINGS);
-    uBorderDiameter = uDiameter;
-    uBorderRadius = uBorderDiameter / 2;
+    // TODO uBorderCX = centerX +- (PADDINGS);
+    uBorderCX = centerX;
+    // TODO uBorderCY = centerY +- (PADDINGS);
+    uBorderCY = centerY;
+    // TODO borderDiameter = diameter - (PADDINGS);
+    int borderDiameter = diameter;
+    uBorderRadius = borderDiameter / 2;
   
     uImageCX = uBorderCX;
     uImageCY = uBorderCY;
     uImageRadius = uBorderRadius - uBorderThickness;
-    uImageDiameter = uImageRadius * 2;
   
-    uReflectionWidth = uBorderDiameter;
-    uReflectionHeight = uBorderDiameter;
-    int reflectionPosStart = uBorderDiameter;
+    uReflectionWidth = borderDiameter;
+    uReflectionHeight = borderDiameter;
+    int reflectionPosStart = borderDiameter;
     int reflectionPosEnd = 0 - uReflectionWidth;
     uReflectionPos = reflectionPosStart;
   
@@ -171,13 +169,13 @@ public class CircleImageView extends AppCompatImageView {
     if (uBitmapImage != null) {
       float bitmapWidth = uBitmapImage.getWidth();
       float bitmapHeight = uBitmapImage.getHeight();
-      float rateOfMin = uDiameter / Math.min(bitmapHeight, bitmapWidth);
-      float uScaledBitmapWidth = rateOfMin * bitmapWidth;
-      float uScaledBitmapHeight = rateOfMin * bitmapHeight;
+      float rateOfMin = diameter / Math.min(bitmapHeight, bitmapWidth);
+      float scaledBitmapWidth = rateOfMin * bitmapWidth;
+      float scaledBitmapHeight = rateOfMin * bitmapHeight;
   
       uBitmapImage = Bitmap.createScaledBitmap(
-          uBitmapImage, (int) uScaledBitmapWidth, (int) uScaledBitmapHeight, false);
-      uBitmapShader = new BitmapShader(uBitmapImage, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+          uBitmapImage, (int) scaledBitmapWidth, (int) scaledBitmapHeight, false);
+      BitmapShader uBitmapShader = new BitmapShader(uBitmapImage, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
       uPaintImage.setShader(uBitmapShader);
     }
   
@@ -227,8 +225,8 @@ public class CircleImageView extends AppCompatImageView {
   private Bitmap generateReflectionBitmap(int w, int h) {
     Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
     Canvas canvasReflection = new Canvas(bitmap);
-    
-    uPathReflection = new Path();
+  
+    Path uPathReflection = new Path();
     uPathReflection.moveTo(uReflectionPos, h);
     uPathReflection.lineTo(uReflectionPos + w / 4, h);
     uPathReflection.lineTo(uReflectionPos + w / 2, 0);
