@@ -181,18 +181,20 @@ public class CircleImageView extends AppCompatImageView {
       uPaintImage.setShader(uBitmapShader);
     }
   
-    uReflectionXAnimator = ValueAnimator.ofInt(reflectionPosStart, reflectionPosEnd);
-    uReflectionXAnimator.setDuration(uAnimationDuration);
-    uReflectionXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-      @Override
-      public void onAnimationUpdate(ValueAnimator valueAnimator) {
-        uReflectionPos = (int) valueAnimator.getAnimatedValue();
-        invalidate();
-      }
-    });
+    if (uShowReflection) {
+      uReflectionXAnimator = ValueAnimator.ofInt(reflectionPosStart, reflectionPosEnd);
+      uReflectionXAnimator.setDuration(uAnimationDuration);
+      uReflectionXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+        @Override
+        public void onAnimationUpdate(ValueAnimator valueAnimator) {
+          uReflectionPos = (int) valueAnimator.getAnimatedValue();
+          invalidate();
+        }
+      });
   
-    // Start the Runnable
-    uHandler.post(uRunnable);
+      // Start the Runnable
+      uHandler.post(uRunnable);
+    }
   }
   
   @SuppressLint("DrawAllocation")
@@ -200,19 +202,25 @@ public class CircleImageView extends AppCompatImageView {
   protected void onDraw(Canvas canvas) {
     
     if (uBitmapImage != null) {
-      uBitmapReflection = generateReflectionBitmap(uReflectionWidth, uReflectionHeight);
+      if (uShowReflection) {
+        uBitmapReflection = generateReflectionBitmap(uReflectionWidth, uReflectionHeight);
+      }
+      uPaint.setXfermode(null);
       
       // Draw border.
-      uPaint.setColor(uBorderColor);
-      uPaint.setXfermode(null);
-      canvas.drawCircle(uBorderCX, uBorderCY, uBorderRadius, uPaint);
+      if (uShowBorder) {
+        uPaint.setColor(uBorderColor);
+        canvas.drawCircle(uBorderCX, uBorderCY, uBorderRadius, uPaint);
+      }
       
       // Draw image.
       canvas.drawCircle(uImageCX, uImageCY, uImageRadius, uPaintImage);
       
       // Draw reflection.
+      if (uShowReflection) {
       uPaint.setColor(uReflectionColor);
       canvas.drawBitmap(uBitmapReflection, 0, 0, uPaint);
+      }
     }
   }
   
@@ -268,18 +276,37 @@ public class CircleImageView extends AppCompatImageView {
     //TODO setAttrs
   }
   
-  public void setImage(String imagePath) {
+  public CircleImageView setImage(String imagePath) {
     uBitmapImage = BitmapFactory.decodeFile(imagePath);
     uIsImageSet = true;
+    return this;
   }
   
-  public void setBorderColor(int borderColor) {
+  public int getBorderColor() {
+    return uBorderColor;
+  }
+  
+  public CircleImageView setBorderColor(int borderColor) {
     uBorderColor = borderColor;
     this.invalidate();
+    return this;
   }
   
-  /*public void modifyShadow(int uRadius, int dx, int dy, int color) {
-    paintBorder.setShadowLayer(uRadius, dx, dy, color);
-    this.invalidate();
-  }*/
+  public boolean isShowBorder() {
+    return uShowBorder;
+  }
+  
+  public CircleImageView setShowBorder(boolean show) {
+    uShowBorder = show;
+    return this;
+  }
+  
+  public boolean isShowReflection() {
+    return uShowReflection;
+  }
+  
+  public CircleImageView setShowReflection(boolean show) {
+    this.uShowReflection = show;
+    return this;
+  }
 }
