@@ -20,6 +20,11 @@ import android.support.annotation.Nullable;
 import android.support.v4.graphics.drawable.RoundedBitmapDrawable;
 import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.AnticipateInterpolator;
+import android.view.animation.BounceInterpolator;
+import android.view.animation.CycleInterpolator;
+import android.view.animation.DecelerateInterpolator;
 
 import volkanatalan.library.Calc;
 
@@ -29,7 +34,7 @@ public class CircleImageView extends AppCompatImageView {
   private Paint uPaint, uPaintImage;
   private Handler uHandler;
   private Runnable uRunnable;
-  private ValueAnimator uReflectionXAnimator;
+  private ValueAnimator uReflectionXAnimator, uReflectionWidthAnimator;
   private PorterDuffXfermode DST_OUT = new PorterDuffXfermode(PorterDuff.Mode.DST_OUT);
   private boolean uIsImageSet = false;
   
@@ -47,14 +52,13 @@ public class CircleImageView extends AppCompatImageView {
   
   private int uImageCX, uImageCY, uImageRadius;
   
+  private int uCircleMaskCX, uCircleMaskCY, uCircleMaskRadius;
+  
   private int uReflectionColor = Color.WHITE;
   private int uReflectionAlpha = 245;
-  private int uReflectionWidth, uReflectionHeight;
-  private int uReflectionPos;
+  private int uReflectionWidth, uReflectionHeight, uReflectionWidthAdd, uReflectionPos;
   private boolean uShowReflection = true;
-  private int uAnimationDuration = 1000, uAnimationRepeatDelay = 5000;
-  
-  private int uCircleMaskCX, uCircleMaskCY, uCircleMaskRadius;
+  private int uAnimationDuration = 1500, uAnimationRepeatDelay = 3000;
   
   public CircleImageView(Context context) {
     super(context);
@@ -94,6 +98,7 @@ public class CircleImageView extends AppCompatImageView {
     uRunnable = new Runnable() {
       @Override
       public void run() {
+        uReflectionWidthAnimator.start();
         uReflectionXAnimator.start();
       
         // Repeat
@@ -180,8 +185,19 @@ public class CircleImageView extends AppCompatImageView {
     }
   
     if (uShowReflection) {
+      uReflectionWidthAnimator = ValueAnimator.ofInt(0, uReflectionWidth / 3);
+      uReflectionWidthAnimator.setDuration(uAnimationDuration);
+      uReflectionWidthAnimator.setInterpolator(new CycleInterpolator(0.8f));
+      uReflectionWidthAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+        @Override
+        public void onAnimationUpdate(ValueAnimator valueAnimator) {
+          uReflectionWidthAdd = (int) valueAnimator.getAnimatedValue();
+        }
+      });
+      
       uReflectionXAnimator = ValueAnimator.ofInt(reflectionPosStart, reflectionPosEnd);
       uReflectionXAnimator.setDuration(uAnimationDuration);
+      uReflectionXAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
       uReflectionXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
         @Override
         public void onAnimationUpdate(ValueAnimator valueAnimator) {
@@ -227,9 +243,13 @@ public class CircleImageView extends AppCompatImageView {
     Canvas canvasReflection = new Canvas(bitmap);
   
     Path uPathReflection = new Path();
+    // Left bottom corner
     uPathReflection.moveTo(uReflectionPos, h);
-    uPathReflection.lineTo(uReflectionPos + w / 4, h);
-    uPathReflection.lineTo(uReflectionPos + w / 2, 0);
+    // Right bottom corner
+    uPathReflection.lineTo(uReflectionPos + uReflectionWidthAdd, h);
+    // Right top corner
+    uPathReflection.lineTo(uReflectionPos + w / 4 + uReflectionWidthAdd, 0);
+    // Left top corner
     uPathReflection.lineTo(uReflectionPos + w / 4, 0);
     uPathReflection.close();
     
