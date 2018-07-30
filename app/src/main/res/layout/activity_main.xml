@@ -7,9 +7,11 @@
     tools:context=".MainActivity">
 
     <volkanatalan.circleimageview.views.CircleImageView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:id="@+id/circleImageView"
+        android:layout_width="350dp"
+        android:layout_height="350dp"
         android:layout_centerInParent="true"
-        app:srcCompat="@drawable/volkanatalanprofileimage2" />
+        app:srcCompat="@drawable/volkanatalanprofileimage2"
+        android:padding="15dp" />
 
 </RelativeLayout>
