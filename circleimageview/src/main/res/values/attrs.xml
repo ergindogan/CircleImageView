@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="CircleImageView">
+        <attr name="showShadow" format="reference|boolean" />
+        <attr name="shadowColor" format="reference|color" />
+        <attr name="shadowXDiff" format="reference|dimension" />
+        <attr name="shadowYDiff" format="reference|dimension" />
+        <attr name="shadowSize" format="reference|dimension" />
+        <attr name="shadowAlpha" format="reference|integer" />
+
+        <attr name="showBorder" format="reference|boolean" />
+        <attr name="borderColor" format="reference|color" />
+        <attr name="borderThickness" format="reference|dimension" />
+
+        <attr name="showReflection" format="reference|boolean" />
+        <attr name="reflectionColor" format="reference|color" />
+        <attr name="reflectionAlpha" format="reference|integer" />
+
+        <attr name="lightAnimationDuration" format="reference|integer" />
+        <attr name="animationRepeatDelay" format="reference|integer" />
+        <attr name="lightAlphaAnimationStart" format="reference|integer" />
+        <attr name="lightAlphaAnimationEnd" format="reference|integer" />
+        <attr name="shadowAlphaAnimationStart" format="reference|integer" />
+        <attr name="shadowAlphaAnimationEnd" format="reference|integer" />
+        <attr name="shadowReverseAnimationDuration" format="reference|integer" />
+        <attr name="shadowReverseAnimationDelay" format="reference|integer" />
+    </declare-styleable>
+</resources>
