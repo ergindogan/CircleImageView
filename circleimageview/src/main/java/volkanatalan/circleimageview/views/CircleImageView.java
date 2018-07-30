@@ -30,9 +30,10 @@ import volkanatalan.library.Calc;
 public class CircleImageView extends AppCompatImageView {
   private Context uContext;
   private TypedArray uTypedArray;
-  private Bitmap uBitmap, uBitmapImage, uBitmapReflection, uBitmapCircleMask, uBitmapAnimated;
+  private Bitmap uBitmapImage, uBitmapCircleMask, uBitmapAnimated;
   private Canvas uCanvasAnimated;
-  private Paint uPaint, uLightPaint;
+  private Paint uPaint, paintImage, uLightPaint;
+  private Path uPathReflection = new Path();
   private Handler uHandler;
   private Runnable uRunnable;
   private ValueAnimator uReflectionXAnimator, uLightAlphaAnimator;
@@ -51,7 +52,9 @@ public class CircleImageView extends AppCompatImageView {
   private boolean uShowShadow = true;
   
   private int uBorderColor = Color.BLACK;
-  private int uBorderCX, uBorderCY, uBorderRadius, uBorderSize;
+  private int uBorderCX, uBorderCY, uBorderDiameter, uBorderRadius, uBorderSize;
+  
+  private int uImageCX, uImageCY, uImageRadius;
   
   private int uCircleMaskCX, uCircleMaskCY, uCircleMaskRadius;
   
@@ -90,6 +93,7 @@ public class CircleImageView extends AppCompatImageView {
     uBorderSize = Calc.dpToPx(uContext, 5);
     uShadowXDiff = Calc.dpToPx(uContext, 5);
     uShadowYDiff = Calc.dpToPx(uContext, 5);
+    uContext = null;
     
     final int animationRepeatDelay = uAnimationRepeatDelay + uLightAnimationDuration;
     
@@ -171,23 +175,23 @@ public class CircleImageView extends AppCompatImageView {
   
     uBorderCX = centerX + paddingLeft - paddingRight;
     uBorderCY = centerY + paddingTop - paddingBottom;
-    int borderDiameter = uDiameter - Math.max(paddingLeft + paddingRight, paddingTop + paddingBottom);
-    uBorderRadius = borderDiameter / 2;
+    uBorderDiameter = uDiameter - Math.max(paddingLeft + paddingRight, paddingTop + paddingBottom);
+    uBorderRadius = uBorderDiameter / 2;
   
     uShadowCX = uBorderCX + uShadowXDiff;
     uShadowCY = uBorderCY + uShadowYDiff;
     uShadowRadius = uBorderRadius + uShadowSize;
-    int uShadowAnimationStart = centerX - (uShadowCX - centerX);
-    int uShadowAnimationEnd = uShadowCX;
-    uShadowAnimatedCX = uShadowAnimationStart;
+    int shadowAnimationStart = centerX - (uShadowCX - centerX);
+    int shadowAnimationEnd = uShadowCX;
+    uShadowAnimatedCX = shadowAnimationStart;
   
-    int uImageCX = uBorderCX;
-    int uImageCY = uBorderCY;
-    int uImageRadius = uBorderRadius - uBorderSize;
+    uImageCX = uBorderCX;
+    uImageCY = uBorderCY;
+    uImageRadius = uBorderRadius - uBorderSize;
   
     int reflectionWidth = uDiameter;
     int reflectionHeight = uDiameter;
-    int reflectionPosStart = borderDiameter;
+    int reflectionPosStart = uBorderDiameter;
     int reflectionPosEnd = 0 - reflectionWidth;
     uReflectionPos = reflectionPosStart;
     int lightAlphaAnimationRepeatDelayDuration = uLightAnimationDuration - (uLightAnimationDuration * 40 / 100);
@@ -207,33 +211,23 @@ public class CircleImageView extends AppCompatImageView {
           uBitmapImage, (int) scaledBitmapWidth, (int) scaledBitmapHeight, false);
       BitmapShader uBitmapShader = new BitmapShader(uBitmapImage, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
   
-      Paint paintImage = new Paint(Paint.ANTI_ALIAS_FLAG);
+      paintImage = new Paint(Paint.ANTI_ALIAS_FLAG);
       paintImage.setDither(true);
       paintImage.setShader(uBitmapShader);
-      
-      uBitmap = Bitmap.createBitmap(uDiameter, uDiameter, Bitmap.Config.ARGB_8888);
-      Canvas canvas = new Canvas(uBitmap);
-      
-      // Draw border.
-      if (uBorderSize > 0) {
-        uPaint.setColor(uBorderColor);
-        canvas.drawCircle(uBorderCX, uBorderCY, uBorderRadius, uPaint);
-      }
-  
-      // Draw image.
-      canvas.drawCircle(uImageCX, uImageCY, uImageRadius, paintImage);
     }
   
     if (uShowReflection) {
       uBitmapAnimated = Bitmap.createBitmap(uDiameter, uDiameter, Bitmap.Config.ARGB_8888);
       uCanvasAnimated = new Canvas(uBitmapAnimated);
     
-      uBitmapReflection = generateReflectionBitmap(reflectionWidth, reflectionHeight);
       uBitmapCircleMask = generateCircleMaskBitmap(reflectionWidth, reflectionHeight);
+  
+      FastOutSlowInInterpolator fastOutSlowInInterpolator = new FastOutSlowInInterpolator();
+      CycleInterpolator cycleInterpolator = new CycleInterpolator(0.5f);
   
       uReflectionXAnimator = ValueAnimator.ofInt(reflectionPosStart, reflectionPosEnd);
       uReflectionXAnimator.setDuration(uLightAnimationDuration);
-      uReflectionXAnimator.setInterpolator(new FastOutSlowInInterpolator());
+      uReflectionXAnimator.setInterpolator(fastOutSlowInInterpolator);
       uReflectionXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
         @Override
         public void onAnimationUpdate(ValueAnimator valueAnimator) {
@@ -243,7 +237,7 @@ public class CircleImageView extends AppCompatImageView {
   
       uLightAlphaAnimator = ValueAnimator.ofInt(uLightAlphaAnimationStart, uLightAlphaAnimationEnd);
       uLightAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
-      uLightAlphaAnimator.setInterpolator(new CycleInterpolator(0.5f));
+      uLightAlphaAnimator.setInterpolator(cycleInterpolator);
       uLightAlphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
         @Override
         public void onAnimationUpdate(ValueAnimator valueAnimator) {
@@ -252,9 +246,19 @@ public class CircleImageView extends AppCompatImageView {
       });
   
       if (uBorderSize > 0) {
-        uShadowXAnimator = ValueAnimator.ofInt(uShadowAnimationStart, uShadowAnimationEnd);
+        uShadowAlphaAnimator = ValueAnimator.ofInt(uShadowAlphaAnimationStart, uShadowAlphaAnimationEnd);
+        uShadowAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
+        uShadowAlphaAnimator.setInterpolator(cycleInterpolator);
+        uShadowAlphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+          @Override
+          public void onAnimationUpdate(ValueAnimator valueAnimator) {
+            uShadowAlphaAdd = (int) valueAnimator.getAnimatedValue();
+          }
+        });
+        
+        uShadowXAnimator = ValueAnimator.ofInt(shadowAnimationStart, shadowAnimationEnd);
         uShadowXAnimator.setDuration(uLightAnimationDuration);
-        uShadowXAnimator.setInterpolator(new FastOutSlowInInterpolator());
+        uShadowXAnimator.setInterpolator(fastOutSlowInInterpolator);
         uShadowXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
           @Override
           public void onAnimationUpdate(ValueAnimator valueAnimator) {
@@ -263,20 +267,10 @@ public class CircleImageView extends AppCompatImageView {
           }
         });
   
-        uShadowAlphaAnimator = ValueAnimator.ofInt(uShadowAlphaAnimationStart, uShadowAlphaAnimationEnd);
-        uShadowAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
-        uShadowAlphaAnimator.setInterpolator(new CycleInterpolator(0.5f));
-        uShadowAlphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-          @Override
-          public void onAnimationUpdate(ValueAnimator valueAnimator) {
-            uShadowAlphaAdd = (int) valueAnimator.getAnimatedValue();
-          }
-        });
-  
-        uShadowReverseAnimation = ValueAnimator.ofInt(uShadowAnimationEnd, uShadowAnimationStart);
+        uShadowReverseAnimation = ValueAnimator.ofInt(shadowAnimationEnd, shadowAnimationStart);
         uShadowReverseAnimation.setDuration(uShadowReverseAnimationDuration);
         uShadowReverseAnimation.setStartDelay(uLightAnimationDuration + uShadowReverseAnimationDelay);
-        uShadowReverseAnimation.setInterpolator(new FastOutSlowInInterpolator());
+        uShadowReverseAnimation.setInterpolator(fastOutSlowInInterpolator);
         uShadowReverseAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
           @Override
           public void onAnimationUpdate(ValueAnimator valueAnimator) {
@@ -322,7 +316,14 @@ public class CircleImageView extends AppCompatImageView {
       
       // Draw border and image
       uPaint.setAlpha(255);
-      canvas.drawBitmap(uBitmap, 0, 0, uPaint);
+      // Draw border.
+      if (uBorderSize > 0) {
+        uPaint.setColor(uBorderColor);
+        canvas.drawCircle(uBorderCX, uBorderCY, uBorderRadius, uPaint);
+      }
+  
+      // Draw image.
+      canvas.drawCircle(uImageCX, uImageCY, uImageRadius, paintImage);
       
       // Draw reflection.
       if (uShowReflection) {
@@ -346,33 +347,26 @@ public class CircleImageView extends AppCompatImageView {
     // Draw reflection
     uPaint.setXfermode(null);
     uPaint.setColor(uReflectionColor);
-    uCanvasAnimated.drawBitmap(uBitmapReflection, uReflectionPos, 0, uPaint);
+    uCanvasAnimated.drawPath(generateReflectionPath(uBorderDiameter, uBorderDiameter), uPaint);
   
     // Draw mask
     uPaint.setXfermode(DST_OUT);
     uCanvasAnimated.drawBitmap(uBitmapCircleMask, 0, 0, uPaint);
   }
   
-  private Bitmap generateReflectionBitmap(int w, int h) {
-    Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-    Canvas canvasReflection = new Canvas(bitmap);
-  
-    Path uPathReflection = new Path();
+  private Path generateReflectionPath(int w, int h) {
+    uPathReflection.reset();
     // Left bottom corner
-    uPathReflection.moveTo(0, h);
+    uPathReflection.moveTo(uReflectionPos, h);
     // Right bottom corner
-    uPathReflection.lineTo(w / 4, h);
+    uPathReflection.lineTo(w / 4 + uReflectionPos, h);
     // Right top corner
-    uPathReflection.lineTo(w / 2, 0);
+    uPathReflection.lineTo(w / 2 + uReflectionPos, 0);
     // Left top corner
-    uPathReflection.lineTo(w / 4, 0);
+    uPathReflection.lineTo(w / 4 + uReflectionPos, 0);
     uPathReflection.close();
     
-    uPaint.setXfermode(null);
-    uPaint.setColor(uReflectionColor);
-    canvasReflection.drawPath(uPathReflection, uPaint);
-    
-    return bitmap;
+    return uPathReflection;
   }
   
   private Bitmap generateCircleMaskBitmap(int w, int h) {
