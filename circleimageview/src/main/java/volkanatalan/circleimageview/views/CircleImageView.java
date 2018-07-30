@@ -3,6 +3,7 @@ package volkanatalan.circleimageview.views;
 import android.animation.AnimatorSet;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.BitmapShader;
@@ -23,13 +24,15 @@ import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
 import android.view.animation.CycleInterpolator;
 
+import volkanatalan.circleimageview.R;
 import volkanatalan.library.Calc;
 
 public class CircleImageView extends AppCompatImageView {
-  Context uContext;
+  private Context uContext;
+  private TypedArray uTypedArray;
   private Bitmap uBitmap, uBitmapImage, uBitmapReflection, uBitmapCircleMask, uBitmapAnimated;
   private Canvas uCanvasAnimated;
-  private Paint uPaint, uPaintImage, uLightPaint;
+  private Paint uPaint, uLightPaint;
   private Handler uHandler;
   private Runnable uRunnable;
   private ValueAnimator uReflectionXAnimator, uLightAlphaAnimator;
@@ -41,15 +44,14 @@ public class CircleImageView extends AppCompatImageView {
   
   private int uDiameter;
   
-  private int uShadowXDiff = 12, uShadowYDiff = 12, uShadowSize = 0;
+  private int uShadowXDiff, uShadowYDiff, uShadowSize = 0;
   private int uShadowColor = Color.BLACK, uShadowAlpha = 50;
   private int uShadowCX, uShadowCY, uShadowRadius, uShadowAnimatedCX;
   private int uShadowAlphaAdd;
   private boolean uShowShadow = true;
   
   private int uBorderColor = Color.BLACK;
-  private int uBorderCX, uBorderCY, uBorderRadius, uBorderThickness;
-  private boolean uShowBorder = true;
+  private int uBorderCX, uBorderCY, uBorderRadius, uBorderSize;
   
   private int uCircleMaskCX, uCircleMaskCY, uCircleMaskRadius;
   
@@ -73,28 +75,29 @@ public class CircleImageView extends AppCompatImageView {
   public CircleImageView(Context context, @Nullable AttributeSet attrs) {
     super(context, attrs);
     uContext = context;
+    uTypedArray = context.obtainStyledAttributes(attrs, R.styleable.CircleImageView);
     start();
   }
   
   public CircleImageView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
     super(context, attrs, defStyleAttr);
     uContext = context;
+    uTypedArray = context.obtainStyledAttributes(attrs, R.styleable.CircleImageView, defStyleAttr, 0);
     start();
   }
   
   private void start() {
-    uBorderThickness = Calc.dpToPx(uContext, 5);
+    uBorderSize = Calc.dpToPx(uContext, 5);
+    uShadowXDiff = Calc.dpToPx(uContext, 5);
+    uShadowYDiff = Calc.dpToPx(uContext, 5);
+    
     final int animationRepeatDelay = uAnimationRepeatDelay + uLightAnimationDuration;
     
-    setAttrs();
-    loadBitmap();
+    getAttrs();
   
     uPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     uPaint.setDither(true);
     uPaint.setStyle(Paint.Style.FILL);
-  
-    uPaintImage = new Paint(Paint.ANTI_ALIAS_FLAG);
-    uPaintImage.setDither(true);
   
     if (isShowReflection()) {
       uLightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -124,6 +127,8 @@ public class CircleImageView extends AppCompatImageView {
   
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    loadBitmap();
+  
     int width = measureDimensions(widthMeasureSpec, heightMeasureSpec);
     int height = measureDimensions(heightMeasureSpec, widthMeasureSpec);
     
@@ -174,10 +179,11 @@ public class CircleImageView extends AppCompatImageView {
     uShadowRadius = uBorderRadius + uShadowSize;
     int uShadowAnimationStart = centerX - (uShadowCX - centerX);
     int uShadowAnimationEnd = uShadowCX;
+    uShadowAnimatedCX = uShadowAnimationStart;
   
     int uImageCX = uBorderCX;
     int uImageCY = uBorderCY;
-    int uImageRadius = uBorderRadius - uBorderThickness;
+    int uImageRadius = uBorderRadius - uBorderSize;
   
     int reflectionWidth = uDiameter;
     int reflectionHeight = uDiameter;
@@ -200,25 +206,28 @@ public class CircleImageView extends AppCompatImageView {
       uBitmapImage = Bitmap.createScaledBitmap(
           uBitmapImage, (int) scaledBitmapWidth, (int) scaledBitmapHeight, false);
       BitmapShader uBitmapShader = new BitmapShader(uBitmapImage, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
-      uPaintImage.setShader(uBitmapShader);
+  
+      Paint paintImage = new Paint(Paint.ANTI_ALIAS_FLAG);
+      paintImage.setDither(true);
+      paintImage.setShader(uBitmapShader);
       
       uBitmap = Bitmap.createBitmap(uDiameter, uDiameter, Bitmap.Config.ARGB_8888);
       Canvas canvas = new Canvas(uBitmap);
       
       // Draw border.
-      if (uShowBorder) {
+      if (uBorderSize > 0) {
         uPaint.setColor(uBorderColor);
         canvas.drawCircle(uBorderCX, uBorderCY, uBorderRadius, uPaint);
       }
   
       // Draw image.
-      canvas.drawCircle(uImageCX, uImageCY, uImageRadius, uPaintImage);
+      canvas.drawCircle(uImageCX, uImageCY, uImageRadius, paintImage);
     }
   
-    uBitmapAnimated = Bitmap.createBitmap(uDiameter, uDiameter, Bitmap.Config.ARGB_8888);
-    uCanvasAnimated = new Canvas(uBitmapAnimated);
-  
     if (uShowReflection) {
+      uBitmapAnimated = Bitmap.createBitmap(uDiameter, uDiameter, Bitmap.Config.ARGB_8888);
+      uCanvasAnimated = new Canvas(uBitmapAnimated);
+    
       uBitmapReflection = generateReflectionBitmap(reflectionWidth, reflectionHeight);
       uBitmapCircleMask = generateCircleMaskBitmap(reflectionWidth, reflectionHeight);
   
@@ -242,53 +251,60 @@ public class CircleImageView extends AppCompatImageView {
         }
       });
   
-      uShadowXAnimator = ValueAnimator.ofInt(uShadowAnimationStart, uShadowAnimationEnd);
-      uShadowXAnimator.setDuration(uLightAnimationDuration);
-      uShadowXAnimator.setInterpolator(new FastOutSlowInInterpolator());
-      uShadowXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-        @Override
-        public void onAnimationUpdate(ValueAnimator valueAnimator) {
-          uShadowAnimatedCX = (int) valueAnimator.getAnimatedValue();
-          invalidate();
-        }
-      });
+      if (uBorderSize > 0) {
+        uShadowXAnimator = ValueAnimator.ofInt(uShadowAnimationStart, uShadowAnimationEnd);
+        uShadowXAnimator.setDuration(uLightAnimationDuration);
+        uShadowXAnimator.setInterpolator(new FastOutSlowInInterpolator());
+        uShadowXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+          @Override
+          public void onAnimationUpdate(ValueAnimator valueAnimator) {
+            uShadowAnimatedCX = (int) valueAnimator.getAnimatedValue();
+            invalidate();
+          }
+        });
   
-      uShadowAlphaAnimator = ValueAnimator.ofInt(uShadowAlphaAnimationStart, uShadowAlphaAnimationEnd);
-      uShadowAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
-      uShadowAlphaAnimator.setInterpolator(new CycleInterpolator(0.5f));
-      uShadowAlphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-        @Override
-        public void onAnimationUpdate(ValueAnimator valueAnimator) {
-          uShadowAlphaAdd = (int) valueAnimator.getAnimatedValue();
-        }
-      });
+        uShadowAlphaAnimator = ValueAnimator.ofInt(uShadowAlphaAnimationStart, uShadowAlphaAnimationEnd);
+        uShadowAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
+        uShadowAlphaAnimator.setInterpolator(new CycleInterpolator(0.5f));
+        uShadowAlphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+          @Override
+          public void onAnimationUpdate(ValueAnimator valueAnimator) {
+            uShadowAlphaAdd = (int) valueAnimator.getAnimatedValue();
+          }
+        });
   
-      uShadowReverseAnimation = ValueAnimator.ofInt(uShadowAnimationEnd, uShadowAnimationStart);
-      uShadowReverseAnimation.setDuration(uShadowReverseAnimationDuration);
-      uShadowReverseAnimation.setStartDelay(uLightAnimationDuration + uShadowReverseAnimationDelay);
-      uShadowReverseAnimation.setInterpolator(new FastOutSlowInInterpolator());
-      uShadowReverseAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-        @Override
-        public void onAnimationUpdate(ValueAnimator valueAnimator) {
-          uShadowAnimatedCX = (int) valueAnimator.getAnimatedValue();
-          invalidate();
-        }
-      });
+        uShadowReverseAnimation = ValueAnimator.ofInt(uShadowAnimationEnd, uShadowAnimationStart);
+        uShadowReverseAnimation.setDuration(uShadowReverseAnimationDuration);
+        uShadowReverseAnimation.setStartDelay(uLightAnimationDuration + uShadowReverseAnimationDelay);
+        uShadowReverseAnimation.setInterpolator(new FastOutSlowInInterpolator());
+        uShadowReverseAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+          @Override
+          public void onAnimationUpdate(ValueAnimator valueAnimator) {
+            uShadowAnimatedCX = (int) valueAnimator.getAnimatedValue();
+            invalidate();
+          }
+        });
+      }
       
       uAnimatorSet = new AnimatorSet();
       uAnimatorSet.play(uReflectionXAnimator);
       uAnimatorSet.play(uLightAlphaAnimator);
-      uAnimatorSet.play(uShadowXAnimator);
-      uAnimatorSet.play(uShadowAlphaAnimator);
-      uAnimatorSet.play(uShadowReverseAnimation);
-  
+      if (uBorderSize > 0) {
+        uAnimatorSet.play(uShadowXAnimator);
+        uAnimatorSet.play(uShadowAlphaAnimator);
+        uAnimatorSet.play(uShadowReverseAnimation);
+      }
+      
       // Start the Runnable
-      uHandler.post(uRunnable);
+      if (uShowReflection)
+        uHandler.post(uRunnable);
       
     } else {
       uReflectionXAnimator = null;
       uLightAlphaAnimator = null;
       uShadowXAnimator = null;
+      uShadowAlphaAnimator = null;
+      uShadowReverseAnimation = null;
     }
   }
   
@@ -296,11 +312,11 @@ public class CircleImageView extends AppCompatImageView {
   protected void onDraw(Canvas canvas) {
     
     if (uBitmapImage != null) {
-      Bitmap animatedBitmap = getAnimatedBitmap();
-      
+      if (uShowReflection) getAnimatedBitmap();
+  
       // Draw shadow
       uPaint.setXfermode(null);
-      uPaint.setColor(Color.BLACK);
+      uPaint.setColor(uShadowColor);
       uPaint.setAlpha(uShadowAlpha + uShadowAlphaAdd);
       canvas.drawCircle(uShadowAnimatedCX, uShadowCY, uShadowRadius, uPaint);
       
@@ -316,12 +332,12 @@ public class CircleImageView extends AppCompatImageView {
         uPaint.setXfermode(null);
         canvas.drawCircle(uBorderCX, uBorderCY, uBorderRadius, uLightPaint);
         uPaint.setXfermode(null);
-        canvas.drawBitmap(animatedBitmap, 0, 0, uPaint);
+        canvas.drawBitmap(uBitmapAnimated, 0, 0, uPaint);
       }
     }
   }
   
-  private Bitmap getAnimatedBitmap(){
+  private void getAnimatedBitmap(){
     // Clear canvas
     uPaint.setXfermode(CLR);
     uPaint.setColor(Color.TRANSPARENT);
@@ -335,8 +351,6 @@ public class CircleImageView extends AppCompatImageView {
     // Draw mask
     uPaint.setXfermode(DST_OUT);
     uCanvasAnimated.drawBitmap(uBitmapCircleMask, 0, 0, uPaint);
-    
-    return uBitmapAnimated;
   }
   
   private Bitmap generateReflectionBitmap(int w, int h) {
@@ -377,18 +391,41 @@ public class CircleImageView extends AppCompatImageView {
     Drawable drawable = this.getDrawable();
     
     if (drawable != null && !uIsImageSet) {
-      if (drawable instanceof BitmapDrawable) {
-        BitmapDrawable bitmapDrawable = (BitmapDrawable) drawable;
-        uBitmapImage = bitmapDrawable.getBitmap();
-      } else if (drawable instanceof RoundedBitmapDrawable) {
+      if (drawable instanceof RoundedBitmapDrawable) {
         RoundedBitmapDrawable roundedBitmapDrawable = (RoundedBitmapDrawable) drawable;
         uBitmapImage = roundedBitmapDrawable.getBitmap();
+      } else if (drawable instanceof BitmapDrawable) {
+        BitmapDrawable bitmapDrawable = (BitmapDrawable) drawable;
+        uBitmapImage = bitmapDrawable.getBitmap();
       }
     }
   }
   
-  private void setAttrs() {
-    //TODO setAttrs
+  private void getAttrs() {
+    uShowShadow = uTypedArray.getBoolean(R.styleable.CircleImageView_showShadow, uShowShadow);
+    uShadowColor = uTypedArray.getColor(R.styleable.CircleImageView_shadowColor, uShadowColor);
+    uShadowXDiff = uTypedArray.getDimensionPixelSize(R.styleable.CircleImageView_shadowXDiff, uShadowXDiff);
+    uShadowYDiff = uTypedArray.getDimensionPixelSize(R.styleable.CircleImageView_shadowYDiff, uShadowYDiff);
+    uShadowSize = uTypedArray.getDimensionPixelSize(R.styleable.CircleImageView_shadowSize, uShadowSize);
+    uShadowAlpha = uTypedArray.getInt(R.styleable.CircleImageView_shadowAlpha, uShadowAlpha);
+  
+    uBorderColor = uTypedArray.getColor(R.styleable.CircleImageView_borderColor, uBorderColor);
+    uBorderSize = uTypedArray.getDimensionPixelSize(R.styleable.CircleImageView_borderSize, uBorderSize);
+  
+    uShowReflection = uTypedArray.getBoolean(R.styleable.CircleImageView_showReflection, uShowReflection);
+    uReflectionColor = uTypedArray.getColor(R.styleable.CircleImageView_reflectionColor, uReflectionColor);
+    uReflectionAlpha = uTypedArray.getInt(R.styleable.CircleImageView_reflectionAlpha, uReflectionAlpha);
+  
+    uLightAnimationDuration = uTypedArray.getInt(R.styleable.CircleImageView_lightAnimationDuration, uLightAnimationDuration);
+    uAnimationRepeatDelay = uTypedArray.getInt(R.styleable.CircleImageView_animationRepeatDelay, uAnimationRepeatDelay);
+    uLightAlphaAnimationStart = uTypedArray.getInt(R.styleable.CircleImageView_lightAlphaAnimationStart, uLightAlphaAnimationStart);
+    uLightAlphaAnimationEnd = uTypedArray.getInt(R.styleable.CircleImageView_lightAlphaAnimationEnd, uLightAlphaAnimationEnd);
+    uShadowAlphaAnimationStart = uTypedArray.getInt(R.styleable.CircleImageView_shadowAlphaAnimationStart, uShadowAlphaAnimationStart);
+    uShadowAlphaAnimationEnd = uTypedArray.getInt(R.styleable.CircleImageView_shadowAlphaAnimationEnd, uShadowAlphaAnimationEnd);
+    uShadowReverseAnimationDuration = uTypedArray.getInt(R.styleable.CircleImageView_shadowReverseAnimationDuration, uShadowReverseAnimationDuration);
+    uShadowReverseAnimationDelay = uTypedArray.getInt(R.styleable.CircleImageView_shadowReverseAnimationDelay, uShadowReverseAnimationDelay);
+    
+    uTypedArray.recycle();
   }
   
   public CircleImageView setImage(String imagePath) {
@@ -404,16 +441,6 @@ public class CircleImageView extends AppCompatImageView {
   
   public CircleImageView setBorderColor(int borderColor) {
     uBorderColor = borderColor;
-    invalidate();
-    return this;
-  }
-  
-  public boolean isShowBorder() {
-    return uShowBorder;
-  }
-  
-  public CircleImageView setShowBorder(boolean show) {
-    uShowBorder = show;
     invalidate();
     return this;
   }
