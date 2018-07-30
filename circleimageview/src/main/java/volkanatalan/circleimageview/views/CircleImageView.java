@@ -12,7 +12,6 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
-import android.graphics.RadialGradient;
 import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -28,7 +27,8 @@ import volkanatalan.library.Calc;
 
 public class CircleImageView extends AppCompatImageView {
   Context uContext;
-  private Bitmap uBitmap, uBitmapImage, uBitmapReflection, uBitmapCircleMask;
+  private Bitmap uBitmap, uBitmapImage, uBitmapReflection, uBitmapCircleMask, uBitmapAnimated;
+  private Canvas uCanvasAnimated;
   private Paint uPaint, uPaintImage, uLightPaint;
   private Handler uHandler;
   private Runnable uRunnable;
@@ -36,28 +36,30 @@ public class CircleImageView extends AppCompatImageView {
   private ValueAnimator uShadowAnimator, uShadowReverseAnimation;
   private AnimatorSet uAnimatorSet;
   private PorterDuffXfermode DST_OUT = new PorterDuffXfermode(PorterDuff.Mode.DST_OUT);
+  private PorterDuffXfermode CLR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
   private boolean uIsImageSet = false;
   
   private int uDiameter;
   
   private int uShadowXDiff = 12, uShadowYDiff = 12, uShadowSize = 0;
-  private int SHADOW_COLOR = Color.BLACK, SHADOW_ALPHA = 50;
-  private int uShadowCX, uShadowCY, uShadowRadius, uShadowDiameter, uShadowAnimatedCX;
-  private int uShadowAnimationStart, uShadowAnimationEnd, uShadowReverseAnimationDelay;
+  private int uShadowColor = Color.BLACK, uShadowAlpha = 100;
+  private int uShadowCX, uShadowCY, uShadowRadius, uShadowAnimatedCX;
+  private int uShadowReverseAnimationDelay;
   private boolean uShowShadow = true;
   
   private int uBorderColor = Color.BLACK;
-  private int uShadowAlpha = 100;
   private int uBorderCX, uBorderCY, uBorderRadius, uBorderThickness;
   private boolean uShowBorder = true;
   
   private int uCircleMaskCX, uCircleMaskCY, uCircleMaskRadius;
   
   private int uReflectionColor = Color.WHITE, uReflectionAlpha = 220;
-  private int uReflectionWidth, uReflectionHeight, uReflectionPos, uLightAlpha;
+  private int uReflectionPos, uLightAlpha;
   private boolean uShowReflection = true;
   private int uLightAlphaAnimationStart = 0, uLightAlphaAnimationEnd = 100;
   private int uAnimationDuration = 1000, uAnimationRepeatDelay = 5000;
+  
+  public enum lightDirection {LEFT, RIGHT}
   
   public CircleImageView(Context context) {
     super(context);
@@ -167,20 +169,17 @@ public class CircleImageView extends AppCompatImageView {
     uShadowCX = uBorderCX + uShadowXDiff;
     uShadowCY = uBorderCY + uShadowYDiff;
     uShadowRadius = uBorderRadius + uShadowSize;
-    uShadowDiameter = borderDiameter + uShadowSize;
-    uShadowAnimationStart = centerX - (uShadowCX - centerX);
-    uShadowAnimationEnd = uShadowCX;
+    int uShadowAnimationStart = centerX - (uShadowCX - centerX);
+    int uShadowAnimationEnd = uShadowCX;
   
     int uImageCX = uBorderCX;
     int uImageCY = uBorderCY;
     int uImageRadius = uBorderRadius - uBorderThickness;
   
-    uReflectionWidth = uDiameter;
-    uReflectionHeight = uDiameter;
+    int reflectionWidth = uDiameter;
+    int reflectionHeight = uDiameter;
     int reflectionPosStart = borderDiameter;
-    int reflectionPosEnd = 0 - uReflectionWidth;
-    int reflectionWidthStart = 0;
-    final int reflectionWidthEnd = uReflectionWidth / 3;
+    int reflectionPosEnd = 0 - reflectionWidth;
     uReflectionPos = reflectionPosStart;
     int lightAlphaAnimationRepeatDelayDuration = uAnimationDuration - (uAnimationDuration * 40 / 100);
   
@@ -213,9 +212,12 @@ public class CircleImageView extends AppCompatImageView {
       canvas.drawCircle(uImageCX, uImageCY, uImageRadius, uPaintImage);
     }
   
+    uBitmapAnimated = Bitmap.createBitmap(uDiameter, uDiameter, Bitmap.Config.ARGB_8888);
+    uCanvasAnimated = new Canvas(uBitmapAnimated);
+  
     if (uShowReflection) {
-      uBitmapReflection = generateReflectionBitmap(uReflectionWidth, uReflectionHeight);
-      uBitmapCircleMask = generateCircleMaskBitmap(uReflectionWidth, uReflectionHeight);
+      uBitmapReflection = generateReflectionBitmap(reflectionWidth, reflectionHeight);
+      uBitmapCircleMask = generateCircleMaskBitmap(reflectionWidth, reflectionHeight);
   
       uReflectionXAnimator = ValueAnimator.ofInt(reflectionPosStart, reflectionPosEnd);
       uReflectionXAnimator.setDuration(uAnimationDuration);
@@ -306,22 +308,21 @@ public class CircleImageView extends AppCompatImageView {
   }
   
   private Bitmap getAnimatedBitmap(){
-    Bitmap bitmap = Bitmap.createBitmap(uReflectionWidth, uReflectionHeight,
-        Bitmap.Config.ARGB_8888);
-    Canvas canvas = new Canvas(bitmap);
+    // Clear canvas
+    uPaint.setXfermode(CLR);
+    uPaint.setColor(Color.TRANSPARENT);
+    uCanvasAnimated.drawPaint(uPaint);
     
     // Draw reflection
     uPaint.setXfermode(null);
     uPaint.setColor(uReflectionColor);
-    canvas.drawBitmap(Bitmap.createScaledBitmap(
-          uBitmapReflection, uReflectionWidth, uReflectionHeight, false),
-        uReflectionPos, 0, uPaint);
+    uCanvasAnimated.drawBitmap(uBitmapReflection, uReflectionPos, 0, uPaint);
   
     // Draw mask
     uPaint.setXfermode(DST_OUT);
-    canvas.drawBitmap(uBitmapCircleMask, 0, 0, uPaint);
+    uCanvasAnimated.drawBitmap(uBitmapCircleMask, 0, 0, uPaint);
     
-    return bitmap;
+    return uBitmapAnimated;
   }
   
   private Bitmap generateReflectionBitmap(int w, int h) {
