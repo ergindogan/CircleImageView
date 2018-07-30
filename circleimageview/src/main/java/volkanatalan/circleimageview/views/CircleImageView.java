@@ -44,8 +44,7 @@ public class CircleImageView extends AppCompatImageView {
   private int uShadowXDiff = 12, uShadowYDiff = 12, uShadowSize = 0;
   private int uShadowColor = Color.BLACK, uShadowAlpha = 50;
   private int uShadowCX, uShadowCY, uShadowRadius, uShadowAnimatedCX;
-  private int uShadowAlphaAdd, uShadowAlphaAnimationStart, uShadowAlphaAnimationEnd = 50;
-  private int uShadowReverseAnimationDelay;
+  private int uShadowAlphaAdd;
   private boolean uShowShadow = true;
   
   private int uBorderColor = Color.BLACK;
@@ -55,10 +54,13 @@ public class CircleImageView extends AppCompatImageView {
   private int uCircleMaskCX, uCircleMaskCY, uCircleMaskRadius;
   
   private int uReflectionColor = Color.WHITE, uReflectionAlpha = 220;
-  private int uReflectionPos, uLightAlpha;
+  private int uReflectionPos, uLightAlpha = 0;
   private boolean uShowReflection = true;
+  
+  private int uLightAnimationDuration = 1000, uAnimationRepeatDelay = 5000;
+  private int uShadowAlphaAnimationStart = 0, uShadowAlphaAnimationEnd = 50;
+  private int uShadowReverseAnimationDelay = 0, uShadowReverseAnimationDuration = uLightAnimationDuration;
   private int uLightAlphaAnimationStart = 0, uLightAlphaAnimationEnd = 100;
-  private int uAnimationDuration = 1000, uAnimationRepeatDelay = 5000;
   
   public enum lightDirection {LEFT, RIGHT}
   
@@ -82,7 +84,7 @@ public class CircleImageView extends AppCompatImageView {
   
   private void start() {
     uBorderThickness = Calc.dpToPx(uContext, 5);
-    final int animationRepeatDelay = uAnimationRepeatDelay + uAnimationDuration;
+    final int animationRepeatDelay = uAnimationRepeatDelay + uLightAnimationDuration;
     
     setAttrs();
     loadBitmap();
@@ -182,7 +184,7 @@ public class CircleImageView extends AppCompatImageView {
     int reflectionPosStart = borderDiameter;
     int reflectionPosEnd = 0 - reflectionWidth;
     uReflectionPos = reflectionPosStart;
-    int lightAlphaAnimationRepeatDelayDuration = uAnimationDuration - (uAnimationDuration * 40 / 100);
+    int lightAlphaAnimationRepeatDelayDuration = uLightAnimationDuration - (uLightAnimationDuration * 40 / 100);
   
     uCircleMaskCX = uBorderCX;
     uCircleMaskCY = uBorderCY;
@@ -221,7 +223,7 @@ public class CircleImageView extends AppCompatImageView {
       uBitmapCircleMask = generateCircleMaskBitmap(reflectionWidth, reflectionHeight);
   
       uReflectionXAnimator = ValueAnimator.ofInt(reflectionPosStart, reflectionPosEnd);
-      uReflectionXAnimator.setDuration(uAnimationDuration);
+      uReflectionXAnimator.setDuration(uLightAnimationDuration);
       uReflectionXAnimator.setInterpolator(new FastOutSlowInInterpolator());
       uReflectionXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
         @Override
@@ -241,7 +243,7 @@ public class CircleImageView extends AppCompatImageView {
       });
   
       uShadowXAnimator = ValueAnimator.ofInt(uShadowAnimationStart, uShadowAnimationEnd);
-      uShadowXAnimator.setDuration(uAnimationDuration);
+      uShadowXAnimator.setDuration(uLightAnimationDuration);
       uShadowXAnimator.setInterpolator(new FastOutSlowInInterpolator());
       uShadowXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
         @Override
@@ -262,8 +264,8 @@ public class CircleImageView extends AppCompatImageView {
       });
   
       uShadowReverseAnimation = ValueAnimator.ofInt(uShadowAnimationEnd, uShadowAnimationStart);
-      uShadowReverseAnimation.setDuration(uAnimationDuration);
-      uShadowReverseAnimation.setStartDelay(uAnimationDuration + uShadowReverseAnimationDelay);
+      uShadowReverseAnimation.setDuration(uShadowReverseAnimationDuration);
+      uShadowReverseAnimation.setStartDelay(uLightAnimationDuration + uShadowReverseAnimationDelay);
       uShadowReverseAnimation.setInterpolator(new FastOutSlowInInterpolator());
       uShadowReverseAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
         @Override
