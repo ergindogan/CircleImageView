@@ -15,7 +15,7 @@
         <attr name="reflectionColor" format="reference|color" />
         <attr name="reflectionAlpha" format="reference|integer" />
 
-        <attr name="lightAnimationDuration" format="reference|integer" />
+        <attr name="lightPassDuration" format="reference|integer" />
         <attr name="animationRepeatDelay" format="reference|integer" />
         <attr name="minLightAlpha" format="reference|integer" />
         <attr name="maxLightAlpha" format="reference|integer" />
@@ -23,5 +23,10 @@
         <attr name="maxShadowAlpha" format="reference|integer" />
         <attr name="shadowReverseAnimationDuration" format="reference|integer" />
         <attr name="shadowReverseAnimationDelay" format="reference|integer" />
+
+        <attr name="lightDirection">
+            <enum name="Left" value="0"/>
+            <enum name="Right" value="1"/>
+        </attr>
     </declare-styleable>
 </resources>
