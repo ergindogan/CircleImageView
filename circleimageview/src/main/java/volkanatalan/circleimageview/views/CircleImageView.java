@@ -412,10 +412,10 @@ public class CircleImageView extends AppCompatImageView {
   
     mLightAnimationDuration = fTypedArray.getInt(R.styleable.CircleImageView_lightAnimationDuration, mLightAnimationDuration);
     mAnimationRepeatDelay = fTypedArray.getInt(R.styleable.CircleImageView_animationRepeatDelay, mAnimationRepeatDelay);
-    mMinLightAlpha = fTypedArray.getInt(R.styleable.CircleImageView_lightAlphaAnimationStart, mMinLightAlpha);
-    mMaxLightAlpha = fTypedArray.getInt(R.styleable.CircleImageView_lightAlphaAnimationEnd, mMaxLightAlpha);
-    mMinShadowAlpha = fTypedArray.getInt(R.styleable.CircleImageView_shadowAlphaAnimationStart, mMinShadowAlpha);
-    mMaxShadowAlpha = fTypedArray.getInt(R.styleable.CircleImageView_shadowAlphaAnimationEnd, mMaxShadowAlpha);
+    mMinLightAlpha = fTypedArray.getInt(R.styleable.CircleImageView_minLightAlpha, mMinLightAlpha);
+    mMaxLightAlpha = fTypedArray.getInt(R.styleable.CircleImageView_maxLightAlpha, mMaxLightAlpha);
+    mMinShadowAlpha = fTypedArray.getInt(R.styleable.CircleImageView_minShadowAlpha, mMinShadowAlpha);
+    mMaxShadowAlpha = fTypedArray.getInt(R.styleable.CircleImageView_maxShadowAlpha, mMaxShadowAlpha);
     mShadowReverseAnimationDuration = fTypedArray.getInt(R.styleable.CircleImageView_shadowReverseAnimationDuration, mShadowReverseAnimationDuration);
     mShadowReverseAnimationDelay = fTypedArray.getInt(R.styleable.CircleImageView_shadowReverseAnimationDelay, mShadowReverseAnimationDelay);
     

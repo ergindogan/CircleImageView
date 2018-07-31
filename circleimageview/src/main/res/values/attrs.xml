@@ -8,9 +8,8 @@
         <attr name="shadowSize" format="reference|dimension" />
         <attr name="shadowAlpha" format="reference|integer" />
 
-        <attr name="showBorder" format="reference|boolean" />
         <attr name="borderColor" format="reference|color" />
-        <attr name="borderThickness" format="reference|dimension" />
+        <attr name="borderSize" format="reference|dimension" />
 
         <attr name="showReflection" format="reference|boolean" />
         <attr name="reflectionColor" format="reference|color" />
@@ -18,10 +17,10 @@
 
         <attr name="lightAnimationDuration" format="reference|integer" />
         <attr name="animationRepeatDelay" format="reference|integer" />
-        <attr name="lightAlphaAnimationStart" format="reference|integer" />
-        <attr name="lightAlphaAnimationEnd" format="reference|integer" />
-        <attr name="shadowAlphaAnimationStart" format="reference|integer" />
-        <attr name="shadowAlphaAnimationEnd" format="reference|integer" />
+        <attr name="minLightAlpha" format="reference|integer" />
+        <attr name="maxLightAlpha" format="reference|integer" />
+        <attr name="minShadowAlpha" format="reference|integer" />
+        <attr name="maxShadowAlpha" format="reference|integer" />
         <attr name="shadowReverseAnimationDuration" format="reference|integer" />
         <attr name="shadowReverseAnimationDelay" format="reference|integer" />
     </declare-styleable>
