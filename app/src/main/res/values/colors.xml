@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#3F51B5</color>
-    <color name="colorPrimaryLight">#8F3233</color>
+    <color name="colorPrimaryLight">#0a2235</color>
     <color name="colorAccent">#FF4081</color>
-    <color name="toolbar">#ae0001</color>
-    <color name="image_border">#ae0001</color>
+    <color name="toolbar">#0f2f49</color>
+    <color name="image_border">#ffffff</color>
+    <color name="background">#212126</color>
 </resources>
