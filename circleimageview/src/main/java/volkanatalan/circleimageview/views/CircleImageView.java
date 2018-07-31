@@ -61,7 +61,7 @@ public class CircleImageView extends AppCompatImageView {
   private int fReflectionPos, fLightAlpha = 0;
   private boolean mShowReflection = true;
   
-  private int mLightPassDuration = 1000, mAnimationRepeatDelay = 5000;
+  private int mLightPassDuration = 1000, mAnimationRepeatDelay = 10000;
   private int mMinShadowAlpha = 0, mMaxShadowAlpha = 50;
   private int mShadowReverseAnimationDelay = 0, mShadowReverseAnimationDuration = mLightPassDuration;
   private int mMinLightAlpha = 0, mMaxLightAlpha = 100;
