@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
+import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -60,12 +61,26 @@ public class CircleImageView extends AppCompatImageView {
   private int fReflectionPos, fLightAlpha = 0;
   private boolean mShowReflection = true;
   
-  private int mLightAnimationDuration = 1000, mAnimationRepeatDelay = 5000;
+  private int mLightPassDuration = 1000, mAnimationRepeatDelay = 5000;
   private int mMinShadowAlpha = 0, mMaxShadowAlpha = 50;
-  private int mShadowReverseAnimationDelay = 0, mShadowReverseAnimationDuration = mLightAnimationDuration;
+  private int mShadowReverseAnimationDelay = 0, mShadowReverseAnimationDuration = mLightPassDuration;
   private int mMinLightAlpha = 0, mMaxLightAlpha = 100;
   
-  public enum lightDirection {LEFT, RIGHT}
+  private LightDirection mLightDirection = LightDirection.LEFT;
+  
+  public enum LightDirection {
+    LEFT(0), RIGHT(1);
+    int id;
+  
+    LightDirection(int id) { this.id = id;}
+  
+    static LightDirection fromId(int id) {
+      for (LightDirection l : LightDirection.values()) {
+        if (l.id == id) return l;
+      }
+      throw new IllegalArgumentException();
+    }
+  }
   
   public CircleImageView(Context context) {
     super(context);
@@ -93,7 +108,7 @@ public class CircleImageView extends AppCompatImageView {
     mShadowYDiff = Calc.dpToPx(fContext, 5);
     fContext = null;
     
-    final int animationRepeatDelay = mAnimationRepeatDelay + mLightAnimationDuration;
+    final int animationRepeatDelay = mAnimationRepeatDelay + mLightPassDuration;
     
     getAttrs();
   
@@ -179,9 +194,8 @@ public class CircleImageView extends AppCompatImageView {
     int shadowCX = fBorderCX + mShadowXDiff;
     fShadowCY = fBorderCY + mShadowYDiff;
     fShadowRadius = fBorderRadius + mShadowSize;
-    int shadowAnimationStart = centerX - (shadowCX - centerX);
-    int shadowAnimationEnd = shadowCX;
-    fShadowAnimatedCX = shadowAnimationStart;
+    int shadowAnimationStart;
+    int shadowAnimationEnd;
   
     fImageCX = fBorderCX;
     fImageCY = fBorderCY;
@@ -189,10 +203,30 @@ public class CircleImageView extends AppCompatImageView {
   
     int reflectionWidth = fDiameter;
     int reflectionHeight = fDiameter;
-    int reflectionPosStart = borderDiameter;
-    int reflectionPosEnd = 0 - reflectionWidth;
+    int reflectionPosStart;
+    int reflectionPosEnd;
+    int lightAlphaAnimationRepeatDelayDuration;
+    
+    if (mLightDirection == LightDirection.LEFT) {
+      reflectionPosStart = borderDiameter;
+      reflectionPosEnd = 0 - reflectionWidth;
+  
+      shadowAnimationStart = centerX - (shadowCX - centerX);
+      shadowAnimationEnd = shadowCX;
+      
+      lightAlphaAnimationRepeatDelayDuration = mLightPassDuration - (mLightPassDuration * 40 / 100);
+    } else {
+      reflectionPosStart = 0 - reflectionWidth;
+      reflectionPosEnd = borderDiameter;
+  
+      shadowAnimationStart = shadowCX;
+      shadowAnimationEnd = centerX - (shadowCX - centerX);
+  
+      lightAlphaAnimationRepeatDelayDuration = mLightPassDuration;
+    }
+  
+    fShadowAnimatedCX = shadowAnimationStart;
     fReflectionPos = reflectionPosStart;
-    int lightAlphaAnimationRepeatDelayDuration = mLightAnimationDuration - (mLightAnimationDuration * 40 / 100);
   
     fCircleMaskCX = fBorderCX;
     fCircleMaskCY = fBorderCY;
@@ -226,12 +260,13 @@ public class CircleImageView extends AppCompatImageView {
       CycleInterpolator cycleInterpolator = new CycleInterpolator(0.5f);
   
       reflectionXAnimator = ValueAnimator.ofInt(reflectionPosStart, reflectionPosEnd);
-      reflectionXAnimator.setDuration(mLightAnimationDuration);
+      reflectionXAnimator.setDuration(mLightPassDuration);
       reflectionXAnimator.setInterpolator(fastOutSlowInInterpolator);
       reflectionXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
         @Override
         public void onAnimationUpdate(ValueAnimator valueAnimator) {
           fReflectionPos = (int)valueAnimator.getAnimatedValue();
+          invalidate();
         }
       });
   
@@ -245,7 +280,7 @@ public class CircleImageView extends AppCompatImageView {
         }
       });
   
-      if (mBorderSize > 0) {
+      if (mShowShadow) {
         fShadowAlphaAnimator = ValueAnimator.ofInt(mMinShadowAlpha, mMaxShadowAlpha);
         fShadowAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
         fShadowAlphaAnimator.setInterpolator(cycleInterpolator);
@@ -257,19 +292,18 @@ public class CircleImageView extends AppCompatImageView {
         });
         
         fShadowXAnimator = ValueAnimator.ofInt(shadowAnimationStart, shadowAnimationEnd);
-        fShadowXAnimator.setDuration(mLightAnimationDuration);
+        fShadowXAnimator.setDuration(mLightPassDuration);
         fShadowXAnimator.setInterpolator(fastOutSlowInInterpolator);
         fShadowXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
           @Override
           public void onAnimationUpdate(ValueAnimator valueAnimator) {
             fShadowAnimatedCX = (int) valueAnimator.getAnimatedValue();
-            invalidate();
           }
         });
   
         fShadowReverseAnimation = ValueAnimator.ofInt(shadowAnimationEnd, shadowAnimationStart);
         fShadowReverseAnimation.setDuration(mShadowReverseAnimationDuration);
-        fShadowReverseAnimation.setStartDelay(mLightAnimationDuration + mShadowReverseAnimationDelay);
+        fShadowReverseAnimation.setStartDelay(mLightPassDuration + mShadowReverseAnimationDelay);
         fShadowReverseAnimation.setInterpolator(fastOutSlowInInterpolator);
         fShadowReverseAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
           @Override
@@ -283,7 +317,7 @@ public class CircleImageView extends AppCompatImageView {
       fAnimatorSet = new AnimatorSet();
       fAnimatorSet.play(reflectionXAnimator);
       fAnimatorSet.play(lightAlphaAnimator);
-      if (mBorderSize > 0) {
+      if (mShowShadow) {
         fAnimatorSet.play(fShadowXAnimator);
         fAnimatorSet.play(fShadowAlphaAnimator);
         fAnimatorSet.play(fShadowReverseAnimation);
@@ -293,12 +327,6 @@ public class CircleImageView extends AppCompatImageView {
       if (mShowReflection)
         fHandler.post(fRunnable);
       
-    } else {
-      reflectionXAnimator = null;
-      lightAlphaAnimator = null;
-      fShadowXAnimator = null;
-      fShadowAlphaAnimator = null;
-      fShadowReverseAnimation = null;
     }
   }
   
@@ -307,15 +335,19 @@ public class CircleImageView extends AppCompatImageView {
     
     if (fBitmapImage != null) {
       if (mShowReflection) getAnimatedBitmap();
+      
+      fPaint.setXfermode(null);
   
       // Draw shadow
-      fPaint.setXfermode(null);
-      fPaint.setColor(mShadowColor);
-      fPaint.setAlpha(mShadowAlpha + fShadowAlphaAdd);
-      canvas.drawCircle(fShadowAnimatedCX, fShadowCY, fShadowRadius, fPaint);
+      if (mShowShadow) {
+        fPaint.setColor(mShadowColor);
+        fPaint.setAlpha(mShadowAlpha + fShadowAlphaAdd);
+        canvas.drawCircle(fShadowAnimatedCX, fShadowCY, fShadowRadius, fPaint);
+        fPaint.setAlpha(255);
+        fPaint.setMaskFilter(null);
+      }
       
       // Draw border and image
-      fPaint.setAlpha(255);
       // Draw border.
       if (mBorderSize > 0) {
         fPaint.setColor(mBorderColor);
@@ -410,14 +442,19 @@ public class CircleImageView extends AppCompatImageView {
     mReflectionColor = fTypedArray.getColor(R.styleable.CircleImageView_reflectionColor, mReflectionColor);
     mReflectionAlpha = fTypedArray.getInt(R.styleable.CircleImageView_reflectionAlpha, mReflectionAlpha);
   
-    mLightAnimationDuration = fTypedArray.getInt(R.styleable.CircleImageView_lightAnimationDuration, mLightAnimationDuration);
+    mLightPassDuration = fTypedArray.getInt(R.styleable.CircleImageView_lightPassDuration, mLightPassDuration);
     mAnimationRepeatDelay = fTypedArray.getInt(R.styleable.CircleImageView_animationRepeatDelay, mAnimationRepeatDelay);
     mMinLightAlpha = fTypedArray.getInt(R.styleable.CircleImageView_minLightAlpha, mMinLightAlpha);
     mMaxLightAlpha = fTypedArray.getInt(R.styleable.CircleImageView_maxLightAlpha, mMaxLightAlpha);
     mMinShadowAlpha = fTypedArray.getInt(R.styleable.CircleImageView_minShadowAlpha, mMinShadowAlpha);
     mMaxShadowAlpha = fTypedArray.getInt(R.styleable.CircleImageView_maxShadowAlpha, mMaxShadowAlpha);
-    mShadowReverseAnimationDuration = fTypedArray.getInt(R.styleable.CircleImageView_shadowReverseAnimationDuration, mShadowReverseAnimationDuration);
-    mShadowReverseAnimationDelay = fTypedArray.getInt(R.styleable.CircleImageView_shadowReverseAnimationDelay, mShadowReverseAnimationDelay);
+    mShadowReverseAnimationDuration = fTypedArray.getInt(
+        R.styleable.CircleImageView_shadowReverseAnimationDuration, mShadowReverseAnimationDuration);
+    mShadowReverseAnimationDelay = fTypedArray.getInt(
+        R.styleable.CircleImageView_shadowReverseAnimationDelay, mShadowReverseAnimationDelay);
+  
+    mLightDirection = LightDirection.fromId(
+        fTypedArray.getInt(R.styleable.CircleImageView_lightDirection, mLightDirection.id));
     
     fTypedArray.recycle();
   }
@@ -532,12 +569,12 @@ public class CircleImageView extends AppCompatImageView {
     return this;
   }
   
-  public int getLightAnimationDuration() {
-    return mLightAnimationDuration;
+  public int getLightPassDuration() {
+    return mLightPassDuration;
   }
   
-  public CircleImageView setLightAnimationDuration(int lightAnimationDuration) {
-    mLightAnimationDuration = lightAnimationDuration;
+  public CircleImageView setLightPassDuration(int lightPassDuration) {
+    mLightPassDuration = lightPassDuration;
     invalidate();
     return this;
   }
@@ -608,6 +645,16 @@ public class CircleImageView extends AppCompatImageView {
   
   public CircleImageView setMaxLightAlpha(int maxLightAlpha) {
     mMaxLightAlpha = maxLightAlpha;
+    invalidate();
+    return this;
+  }
+  
+  public LightDirection getLightDirection() {
+    return mLightDirection;
+  }
+  
+  public CircleImageView setLightDirection(LightDirection lightDirection) {
+    mLightDirection = lightDirection;
     invalidate();
     return this;
   }
