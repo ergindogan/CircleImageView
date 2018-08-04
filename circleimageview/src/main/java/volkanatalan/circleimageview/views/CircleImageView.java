@@ -5,15 +5,12 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
-import android.graphics.BitmapShader;
-import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
-import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
@@ -32,9 +29,9 @@ public class CircleImageView extends AppCompatImageView {
   // "m" means the variable is a field, it has getter-setter methods and an attribute.
   private Context fContext;
   private TypedArray fTypedArray;
-  private Bitmap fBitmapImage, fBitmapCircleMask, fBitmapAnimated;
+  private Bitmap fBitmapImage, fBitmapCircleImageAndBorder, fBitmapCircleMask, fBitmapAnimated;
   private Canvas fCanvasAnimated;
-  private Paint fPaint, fPaintImage, fLightPaint;
+  private Paint fPaint, fLightPaint;
   private Path fPathReflection = new Path();
   private Handler fHandler;
   private Runnable fRunnable;
@@ -43,7 +40,7 @@ public class CircleImageView extends AppCompatImageView {
   private PorterDuffXfermode DST_OUT = new PorterDuffXfermode(PorterDuff.Mode.DST_OUT);
   private PorterDuffXfermode CLR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
   
-  private int fDiameter;
+  private int fViewWidth, fViewHeight, fDiameter;
   
   private int mShadowXDiff, mShadowYDiff, mShadowSize = 0;
   private int mShadowColor = Color.BLACK, mShadowAlpha = 50;
@@ -52,10 +49,6 @@ public class CircleImageView extends AppCompatImageView {
   
   private int mBorderColor = Color.BLACK;
   private int fBorderCX, fBorderCY, fBorderRadius, mBorderSize;
-  
-  private int fImageCX, fImageCY, fImageRadius;
-  
-  private int fCircleMaskCX, fCircleMaskCY, fCircleMaskRadius;
   
   private int mReflectionColor = Color.WHITE, mReflectionAlpha = 220;
   private int fReflectionPos, fLightAlpha = 0;
@@ -108,9 +101,9 @@ public class CircleImageView extends AppCompatImageView {
     mShadowYDiff = Calc.dpToPx(fContext, 5);
     fContext = null;
     
-    final int animationRepeatDelay = mAnimationRepeatDelay + mLightPassDuration;
-    
     getAttrs();
+  
+    final int animationRepeatDelay = mAnimationRepeatDelay + mLightPassDuration;
   
     fPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     fPaint.setDither(true);
@@ -128,9 +121,6 @@ public class CircleImageView extends AppCompatImageView {
       fRunnable = new Runnable() {
         @Override
         public void run() {
-//          uReflectionWidthAnimator.start();
-//          uReflectionXAnimator.start();
-//          uLightAlphaAnimator.start();
           fAnimatorSet.start();
       
           // Repeat
@@ -142,35 +132,47 @@ public class CircleImageView extends AppCompatImageView {
     setDrawingCacheEnabled(false);
   }
   
+  
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
     loadBitmap();
-  
-    int width = measureDimensions(widthMeasureSpec, heightMeasureSpec);
-    int height = measureDimensions(heightMeasureSpec, widthMeasureSpec);
-    
-    setMeasuredDimension(width, height);
+    measureDimensions(widthMeasureSpec, heightMeasureSpec);
+    setMeasuredDimension(fViewWidth, fViewHeight);
   }
   
-  private int measureDimensions(int requiredMeasureSpec, int otherMeasureSpec) {
-    int requiredMeasureSpecMode = MeasureSpec.getMode(requiredMeasureSpec);
-    int requiredMeasureSpecSize = MeasureSpec.getSize(requiredMeasureSpec);
+  
+  private void measureDimensions(int widthMeasureSpec, int heightMeasureSpec) {
+    int widthMode = MeasureSpec.getMode(widthMeasureSpec);
+    int widthSize = MeasureSpec.getSize(widthMeasureSpec);
+    int heightMode = MeasureSpec.getMode(heightMeasureSpec);
+    int heightSize = MeasureSpec.getSize(heightMeasureSpec);
+    float smallDimension = Math.min(widthSize, heightSize);
     
-    int otherMeasureSpecMode = MeasureSpec.getMode(otherMeasureSpec);
-    int otherMeasureSpecSize = MeasureSpec.getSize(otherMeasureSpec);
-    
-    if (otherMeasureSpecMode == MeasureSpec.EXACTLY &&
-            requiredMeasureSpecMode == MeasureSpec.AT_MOST) {
-      if (otherMeasureSpecSize < requiredMeasureSpecSize) {
-        return otherMeasureSpecSize;
-      } else { return requiredMeasureSpecSize; }
-    } else if (requiredMeasureSpecMode == MeasureSpec.EXACTLY) {
-      return requiredMeasureSpecSize;
-    } else if (otherMeasureSpecMode == MeasureSpec.AT_MOST &&
-            requiredMeasureSpecMode == MeasureSpec.AT_MOST) {
-      return Math.min(requiredMeasureSpecSize, otherMeasureSpecSize);
-    } else {
-      return requiredMeasureSpecSize;
+  
+    // If both width and height are exact values.
+    if (widthMode == MeasureSpec.EXACTLY && heightMode == MeasureSpec.EXACTLY) {
+      fViewWidth = widthSize;
+      fViewHeight = heightSize;
+      
+      
+      // If width is an exact value and height is wrap_content.
+    } else if (widthMode == MeasureSpec.EXACTLY && heightMode == MeasureSpec.AT_MOST) {
+      fViewWidth = widthSize;
+      fViewHeight = widthSize > heightSize ? heightSize : widthSize;
+      
+  
+      // If width is wrap_content and height is an exact value.
+    } else if (widthMode == MeasureSpec.AT_MOST && heightMode == MeasureSpec.EXACTLY) {
+      fViewWidth = widthSize > heightSize ? heightSize : widthSize;
+      fViewHeight = heightSize;
+      
+      
+      // If both width and height are wrap_content.
+    } else if (widthMode == MeasureSpec.AT_MOST && heightMode == MeasureSpec.AT_MOST) {
+      fViewWidth = (int) smallDimension + mBorderSize + getPaddingLeft() + getPaddingRight();
+      fViewHeight = (int) smallDimension + mBorderSize + getPaddingTop() + getPaddingBottom();
+      fViewWidth = fViewWidth > widthSize ? widthSize : fViewWidth;
+      fViewHeight = fViewWidth > heightSize ? heightSize : fViewHeight;
     }
   }
   
@@ -182,24 +184,69 @@ public class CircleImageView extends AppCompatImageView {
     int paddingBottom = getPaddingBottom();
     
     fDiameter = Math.min(w, h);
-    int radius = fDiameter / 2;
-    int centerX = radius;
-    int centerY = radius;
+    int centerX = w / 2;
+    int centerY = h / 2;
   
     fBorderCX = centerX + paddingLeft - paddingRight;
     fBorderCY = centerY + paddingTop - paddingBottom;
     int borderDiameter = fDiameter - Math.max(paddingLeft + paddingRight, paddingTop + paddingBottom);
     fBorderRadius = borderDiameter / 2;
   
+    float imageDiameter = borderDiameter - mBorderSize * 2;
+    int imageRadius = (int) (imageDiameter / 2);
+    float imageWidth = fBitmapImage.getWidth();
+    float imageHeight = fBitmapImage.getHeight();
+    float smallDimension = Math.min(imageWidth, imageHeight);
+    float ratio = imageDiameter / smallDimension;
+    int fScaledImageWidth = (int) (imageWidth * ratio);
+    int fScaledImageHeight = (int) (imageHeight * ratio);
+    int bitmapLeft = (fViewWidth - fScaledImageWidth) / 2;
+    int bitmapTop = (fViewHeight - fScaledImageHeight) / 2;
+  
+    if (fBitmapImage != null) {
+      fBitmapImage = Bitmap.createScaledBitmap(
+          fBitmapImage, fScaledImageWidth, fScaledImageHeight, false);
+    }
+    
+    
+  
+    Bitmap bitmap = Bitmap.createBitmap(fViewWidth, fViewHeight, Bitmap.Config.ARGB_8888);
+    Canvas canvas = new Canvas(bitmap);
+  
+    fPaint.setXfermode(null);
+    
+    // Draw image
+    canvas.drawBitmap(fBitmapImage, bitmapLeft, bitmapTop, fPaint);
+  
+    // Draw circle image mask
+    fPaint.setXfermode(DST_OUT);
+    canvas.drawBitmap(
+        generateCircleMaskBitmap(fViewWidth, fViewHeight, fBorderCX, fBorderCY, imageRadius),
+        0, 0, fPaint);
+    
+    
+    
+  
+    fBitmapCircleImageAndBorder = Bitmap.createBitmap(fViewWidth, fViewHeight, Bitmap.Config.ARGB_8888);
+    Canvas imageCanvas = new Canvas(fBitmapCircleImageAndBorder);
+    fPaint.setXfermode(null);
+  
+    // Draw border
+    if (mBorderSize > 0) {
+      fPaint.setColor(mBorderColor);
+      imageCanvas.drawCircle(fBorderCX, fBorderCY, fBorderRadius, fPaint);
+    }
+    
+    // Draw circle image
+    imageCanvas.drawBitmap(bitmap, 0, 0, fPaint);
+  
+    
+    
     int shadowCX = fBorderCX + mShadowXDiff;
     fShadowCY = fBorderCY + mShadowYDiff;
     fShadowRadius = fBorderRadius + mShadowSize;
     int shadowAnimationStart;
     int shadowAnimationEnd;
-  
-    fImageCX = fBorderCX;
-    fImageCY = fBorderCY;
-    fImageRadius = fBorderRadius - mBorderSize;
   
     int reflectionWidth = fDiameter;
     int reflectionHeight = fDiameter;
@@ -209,7 +256,7 @@ public class CircleImageView extends AppCompatImageView {
     
     if (mLightDirection == LightDirection.LEFT) {
       reflectionPosStart = borderDiameter;
-      reflectionPosEnd = 0 - reflectionWidth;
+      reflectionPosEnd = - reflectionWidth;
   
       shadowAnimationStart = centerX - (shadowCX - centerX);
       shadowAnimationEnd = shadowCX;
@@ -227,34 +274,17 @@ public class CircleImageView extends AppCompatImageView {
   
     fShadowAnimatedCX = shadowAnimationStart;
     fReflectionPos = reflectionPosStart;
-  
-    fCircleMaskCX = fBorderCX;
-    fCircleMaskCY = fBorderCY;
-    fCircleMaskRadius = fBorderRadius;
-    
-    if (fBitmapImage != null) {
-      float bitmapWidth = fBitmapImage.getWidth();
-      float bitmapHeight = fBitmapImage.getHeight();
-      float rateOfMin = fDiameter / Math.min(bitmapHeight, bitmapWidth);
-      float scaledBitmapWidth = rateOfMin * bitmapWidth;
-      float scaledBitmapHeight = rateOfMin * bitmapHeight;
-  
-      fBitmapImage = Bitmap.createScaledBitmap(
-          fBitmapImage, (int) scaledBitmapWidth, (int) scaledBitmapHeight, false);
-      BitmapShader bitmapShader = new BitmapShader(fBitmapImage, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
-  
-      fPaintImage = new Paint(Paint.ANTI_ALIAS_FLAG);
-      fPaintImage.setDither(true);
-      fPaintImage.setShader(bitmapShader);
-    }
+    int fCircleMaskRadius = fBorderRadius;
   
     ValueAnimator reflectionXAnimator;
     ValueAnimator lightAlphaAnimator;
+    
     if (mShowReflection) {
       fBitmapAnimated = Bitmap.createBitmap(fDiameter, fDiameter, Bitmap.Config.ARGB_8888);
       fCanvasAnimated = new Canvas(fBitmapAnimated);
     
-      fBitmapCircleMask = generateCircleMaskBitmap(reflectionWidth, reflectionHeight);
+      fBitmapCircleMask = generateCircleMaskBitmap(
+          reflectionWidth, reflectionHeight, fBorderCX, fBorderCY, fCircleMaskRadius);
   
       FastOutSlowInInterpolator fastOutSlowInInterpolator = new FastOutSlowInInterpolator();
       CycleInterpolator cycleInterpolator = new CycleInterpolator(0.5f);
@@ -347,22 +377,18 @@ public class CircleImageView extends AppCompatImageView {
         fPaint.setMaskFilter(null);
       }
       
-      // Draw border and image
       // Draw border.
-      if (mBorderSize > 0) {
-        fPaint.setColor(mBorderColor);
-        canvas.drawCircle(fBorderCX, fBorderCY, fBorderRadius, fPaint);
-      }
+      
   
       // Draw image.
-      canvas.drawCircle(fImageCX, fImageCY, fImageRadius, fPaintImage);
+      canvas.drawBitmap(fBitmapCircleImageAndBorder, 0, 0, fPaint);
       
       // Draw reflection.
       if (mShowReflection) {
         fPaint.setColor(mReflectionColor);
         fPaint.setAlpha(mReflectionAlpha);
-        fLightPaint.setAlpha(fLightAlpha);
         fPaint.setXfermode(null);
+        fLightPaint.setAlpha(fLightAlpha);
         canvas.drawCircle(fBorderCX, fBorderCY, fBorderRadius, fLightPaint);
         fPaint.setXfermode(null);
         canvas.drawBitmap(fBitmapAnimated, 0, 0, fPaint);
@@ -401,7 +427,7 @@ public class CircleImageView extends AppCompatImageView {
     return fPathReflection;
   }
   
-  private Bitmap generateCircleMaskBitmap(int w, int h) {
+  private Bitmap generateCircleMaskBitmap(int w, int h, int cx, int cy, int radius) {
     Bitmap bitmapCircleMask = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
     Canvas canvas = new Canvas(bitmapCircleMask);
     
@@ -409,7 +435,7 @@ public class CircleImageView extends AppCompatImageView {
     canvas.drawPaint(fPaint);
   
     fPaint.setXfermode(DST_OUT);
-    canvas.drawCircle(fCircleMaskCX, fCircleMaskCY, fCircleMaskRadius, fPaint);
+    canvas.drawCircle(cx, cy, radius, fPaint);
     return bitmapCircleMask;
   }
   
@@ -589,17 +615,17 @@ public class CircleImageView extends AppCompatImageView {
     return this;
   }
   
-  public int getShadowAlphaAnimationStart() {
+  public int getMinShadowAlpha() {
     return mMinShadowAlpha;
   }
   
-  public CircleImageView setShadowAlphaAnimationStart(int minShadowAlpha) {
+  public CircleImageView setMinShadowAlpha(int minShadowAlpha) {
     mMinShadowAlpha = minShadowAlpha;
     invalidate();
     return this;
   }
   
-  public int getShadowAlphaAnimationEnd() {
+  public int getMaxShadowAlpha() {
     return mMaxShadowAlpha;
   }
   
