@@ -2,16 +2,27 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    tools:context="volkanatalan.circleimageview.sample.MainActivity"
+    android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    android:background="@color/background"
+    android:orientation="vertical"
+    android:onClick="animate">
 
-    <volkanatalan.circleimageview.views.CircleImageView
-        android:id="@+id/circleImageView"
-        android:layout_width="350dp"
-        android:layout_height="350dp"
-        android:layout_centerInParent="true"
-        app:srcCompat="@drawable/volkanatalanprofileimage2"
-        android:padding="15dp" />
+    <include layout="@layout/page_header"/>
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="@dimen/tv_margin_bottom"
+        android:padding="@dimen/tv_padding"
+        android:text="CHOOSE IMAGE"
+        android:textColor="@android:color/white"
+        android:background="@drawable/choose_image_gradient"
+        android:textSize="@dimen/tv_textSize"
+        app:fontFamily="@font/black_ops_one"
+        android:onClick="chooseImage"/>
 </RelativeLayout>
