@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="@dimen/header_h">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/cover_image"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/cover_h"
+            android:background="@drawable/mountain"
+            android:scaleType="centerCrop" />
+
+        <LinearLayout
+            android:id="@+id/line"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/civ_border_size"
+            android:background="@drawable/line_gradient"
+            android:orientation="horizontal"/>
+    </LinearLayout>
+
+    <volkanatalan.circleimageview.views.CircleImageView
+        android:id="@+id/circleImageView"
+        android:layout_width="@dimen/civ_diameter"
+        android:layout_height="@dimen/civ_diameter"
+        android:layout_alignParentBottom="true"
+        android:padding="10dp"
+        android:layout_marginLeft="@dimen/civ_margin_left"
+        app:srcCompat="@drawable/volkanatalan"
+        app:borderSize="@dimen/civ_border_size"
+        app:lightDirection="Right"
+        app:shadowXDiff="3dp"
+        app:shadowYDiff="3dp"/>
+</RelativeLayout>
