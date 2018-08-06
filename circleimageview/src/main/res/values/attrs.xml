@@ -11,7 +11,7 @@
         <attr name="borderColor" format="reference|color" />
         <attr name="borderSize" format="reference|dimension" />
 
-        <attr name="showReflection" format="reference|boolean" />
+        <attr name="autoAnimate" format="reference|boolean" />
         <attr name="reflectionColor" format="reference|color" />
         <attr name="reflectionAlpha" format="reference|integer" />
 
