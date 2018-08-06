@@ -5,14 +5,18 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
+import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
+import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v4.graphics.drawable.RoundedBitmapDrawable;
@@ -31,7 +35,7 @@ public class CircleImageView extends AppCompatImageView {
   private TypedArray fTypedArray;
   private Bitmap fBitmapImage, fBitmapCircleImageAndBorder, fBitmapCircleMask, fBitmapAnimated;
   private Canvas fCanvasAnimated;
-  private Paint fPaint, fLightPaint;
+  private Paint fPaint, fBorderPaint, fLightPaint;
   private Path fPathReflection = new Path();
   private Handler fHandler;
   private Runnable fRunnable;
@@ -48,11 +52,12 @@ public class CircleImageView extends AppCompatImageView {
   private boolean mShowShadow = true;
   
   private int mBorderColor = Color.BLACK;
-  private int fBorderCX, fBorderCY, fBorderRadius, mBorderSize;
+  private GradientDrawable gradientDrawable;
+  private int fBorderCX, fBorderCY, fBorderRadius, mBorderSize, fBorderDiameter;
   
   private int mReflectionColor = Color.WHITE, mReflectionAlpha = 220;
   private int fReflectionPos, fLightAlpha = 0;
-  private boolean mShowReflection = true;
+  private boolean mAutoAnimate = true;
   
   private int mLightPassDuration = 1000, mAnimationRepeatDelay = 10000;
   private int mMinShadowAlpha = 0, mMaxShadowAlpha = 50;
@@ -109,33 +114,35 @@ public class CircleImageView extends AppCompatImageView {
     fPaint.setDither(true);
     fPaint.setStyle(Paint.Style.FILL);
   
-    if (mShowReflection) {
-      fLightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-      fLightPaint.setDither(true);
-      fLightPaint.setStyle(Paint.Style.FILL);
-      fLightPaint.setColor(mReflectionColor);
-      fLightPaint.setAlpha(0);
+    fBorderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    fBorderPaint.setDither(true);
+    fBorderPaint.setStyle(Paint.Style.FILL);
+    fBorderPaint.setColor(mBorderColor);
   
-      fHandler = new Handler();
-  
-      fRunnable = new Runnable() {
-        @Override
-        public void run() {
-          fAnimatorSet.start();
-      
-          // Repeat
-          fHandler.postDelayed(fRunnable, animationRepeatDelay);
-        }
-      };
-    }
+    fLightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    fLightPaint.setDither(true);
+    fLightPaint.setStyle(Paint.Style.FILL);
+    fLightPaint.setColor(mReflectionColor);
+    fLightPaint.setAlpha(0);
+
+    fHandler = new Handler();
+
+    fRunnable = new Runnable() {
+      @Override
+      public void run() {
+        fAnimatorSet.start();
     
-    setDrawingCacheEnabled(false);
+        // Repeat
+        fHandler.postDelayed(fRunnable, animationRepeatDelay);
+      }
+    };
+  
+    loadBitmap();
   }
   
   
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-    loadBitmap();
     measureDimensions(widthMeasureSpec, heightMeasureSpec);
     setMeasuredDimension(fViewWidth, fViewHeight);
   }
@@ -169,8 +176,8 @@ public class CircleImageView extends AppCompatImageView {
       
       // If both width and height are wrap_content.
     } else if (widthMode == MeasureSpec.AT_MOST && heightMode == MeasureSpec.AT_MOST) {
-      fViewWidth = (int) smallDimension + mBorderSize + getPaddingLeft() + getPaddingRight();
-      fViewHeight = (int) smallDimension + mBorderSize + getPaddingTop() + getPaddingBottom();
+      fViewWidth = (int) smallDimension + mBorderSize * 2 + getPaddingLeft() + getPaddingRight();
+      fViewHeight = (int) smallDimension + mBorderSize * 2 + getPaddingTop() + getPaddingBottom();
       fViewWidth = fViewWidth > widthSize ? widthSize : fViewWidth;
       fViewHeight = fViewWidth > heightSize ? heightSize : fViewHeight;
     }
@@ -178,69 +185,11 @@ public class CircleImageView extends AppCompatImageView {
   
   @Override
   protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-    int paddingLeft = getPaddingLeft();
-    int paddingTop = getPaddingTop();
-    int paddingRight = getPaddingRight();
-    int paddingBottom = getPaddingBottom();
     
     fDiameter = Math.min(w, h);
     int centerX = w / 2;
-    int centerY = h / 2;
   
-    fBorderCX = centerX + paddingLeft - paddingRight;
-    fBorderCY = centerY + paddingTop - paddingBottom;
-    int borderDiameter = fDiameter - Math.max(paddingLeft + paddingRight, paddingTop + paddingBottom);
-    fBorderRadius = borderDiameter / 2;
-  
-    float imageDiameter = borderDiameter - mBorderSize * 2;
-    int imageRadius = (int) (imageDiameter / 2);
-    float imageWidth = fBitmapImage.getWidth();
-    float imageHeight = fBitmapImage.getHeight();
-    float smallDimension = Math.min(imageWidth, imageHeight);
-    float ratio = imageDiameter / smallDimension;
-    int fScaledImageWidth = (int) (imageWidth * ratio);
-    int fScaledImageHeight = (int) (imageHeight * ratio);
-    int bitmapLeft = (fViewWidth - fScaledImageWidth) / 2;
-    int bitmapTop = (fViewHeight - fScaledImageHeight) / 2;
-  
-    if (fBitmapImage != null) {
-      fBitmapImage = Bitmap.createScaledBitmap(
-          fBitmapImage, fScaledImageWidth, fScaledImageHeight, false);
-    }
-    
-    
-  
-    Bitmap bitmap = Bitmap.createBitmap(fViewWidth, fViewHeight, Bitmap.Config.ARGB_8888);
-    Canvas canvas = new Canvas(bitmap);
-  
-    fPaint.setXfermode(null);
-    
-    // Draw image
-    canvas.drawBitmap(fBitmapImage, bitmapLeft, bitmapTop, fPaint);
-  
-    // Draw circle image mask
-    fPaint.setXfermode(DST_OUT);
-    canvas.drawBitmap(
-        generateCircleMaskBitmap(fViewWidth, fViewHeight, fBorderCX, fBorderCY, imageRadius),
-        0, 0, fPaint);
-    
-    
-    
-  
-    fBitmapCircleImageAndBorder = Bitmap.createBitmap(fViewWidth, fViewHeight, Bitmap.Config.ARGB_8888);
-    Canvas imageCanvas = new Canvas(fBitmapCircleImageAndBorder);
-    fPaint.setXfermode(null);
-  
-    // Draw border
-    if (mBorderSize > 0) {
-      fPaint.setColor(mBorderColor);
-      imageCanvas.drawCircle(fBorderCX, fBorderCY, fBorderRadius, fPaint);
-    }
-    
-    // Draw circle image
-    imageCanvas.drawBitmap(bitmap, 0, 0, fPaint);
-  
-    
+    generateBorderAndImageBitmap();
     
     int shadowCX = fBorderCX + mShadowXDiff;
     fShadowCY = fBorderCY + mShadowYDiff;
@@ -255,7 +204,7 @@ public class CircleImageView extends AppCompatImageView {
     int lightAlphaAnimationRepeatDelayDuration;
     
     if (mLightDirection == LightDirection.LEFT) {
-      reflectionPosStart = borderDiameter;
+      reflectionPosStart = fBorderDiameter;
       reflectionPosEnd = - reflectionWidth;
   
       shadowAnimationStart = centerX - (shadowCX - centerX);
@@ -264,7 +213,7 @@ public class CircleImageView extends AppCompatImageView {
       lightAlphaAnimationRepeatDelayDuration = mLightPassDuration - (mLightPassDuration * 40 / 100);
     } else {
       reflectionPosStart = 0 - reflectionWidth;
-      reflectionPosEnd = borderDiameter;
+      reflectionPosEnd = fBorderDiameter;
   
       shadowAnimationStart = shadowCX;
       shadowAnimationEnd = centerX - (shadowCX - centerX);
@@ -279,112 +228,106 @@ public class CircleImageView extends AppCompatImageView {
     ValueAnimator reflectionXAnimator;
     ValueAnimator lightAlphaAnimator;
     
-    if (mShowReflection) {
-      fBitmapAnimated = Bitmap.createBitmap(fDiameter, fDiameter, Bitmap.Config.ARGB_8888);
-      fCanvasAnimated = new Canvas(fBitmapAnimated);
-    
-      fBitmapCircleMask = generateCircleMaskBitmap(
-          reflectionWidth, reflectionHeight, fBorderCX, fBorderCY, fCircleMaskRadius);
+    fBitmapAnimated = Bitmap.createBitmap(fDiameter, fDiameter, Bitmap.Config.ARGB_8888);
+    fCanvasAnimated = new Canvas(fBitmapAnimated);
   
-      FastOutSlowInInterpolator fastOutSlowInInterpolator = new FastOutSlowInInterpolator();
-      CycleInterpolator cycleInterpolator = new CycleInterpolator(0.5f);
-  
-      reflectionXAnimator = ValueAnimator.ofInt(reflectionPosStart, reflectionPosEnd);
-      reflectionXAnimator.setDuration(mLightPassDuration);
-      reflectionXAnimator.setInterpolator(fastOutSlowInInterpolator);
-      reflectionXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+    fBitmapCircleMask = generateCircleMaskBitmap(
+        reflectionWidth, reflectionHeight, fBorderCX, fBorderCY, fCircleMaskRadius);
+
+    FastOutSlowInInterpolator fastOutSlowInInterpolator = new FastOutSlowInInterpolator();
+    CycleInterpolator cycleInterpolator = new CycleInterpolator(0.5f);
+
+    reflectionXAnimator = ValueAnimator.ofInt(reflectionPosStart, reflectionPosEnd);
+    reflectionXAnimator.setDuration(mLightPassDuration);
+    reflectionXAnimator.setInterpolator(fastOutSlowInInterpolator);
+    reflectionXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+      @Override
+      public void onAnimationUpdate(ValueAnimator valueAnimator) {
+        fReflectionPos = (int)valueAnimator.getAnimatedValue();
+        invalidate();
+      }
+    });
+
+    lightAlphaAnimator = ValueAnimator.ofInt(mMinLightAlpha, mMaxLightAlpha);
+    lightAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
+    lightAlphaAnimator.setInterpolator(cycleInterpolator);
+    lightAlphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+      @Override
+      public void onAnimationUpdate(ValueAnimator valueAnimator) {
+        fLightAlpha = (int) valueAnimator.getAnimatedValue();
+      }
+    });
+
+    if (mShowShadow) {
+      fShadowAlphaAnimator = ValueAnimator.ofInt(mMinShadowAlpha, mMaxShadowAlpha);
+      fShadowAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
+      fShadowAlphaAnimator.setInterpolator(cycleInterpolator);
+      fShadowAlphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
         @Override
         public void onAnimationUpdate(ValueAnimator valueAnimator) {
-          fReflectionPos = (int)valueAnimator.getAnimatedValue();
+          fShadowAlphaAdd = (int) valueAnimator.getAnimatedValue();
+        }
+      });
+      
+      fShadowXAnimator = ValueAnimator.ofInt(shadowAnimationStart, shadowAnimationEnd);
+      fShadowXAnimator.setDuration(mLightPassDuration);
+      fShadowXAnimator.setInterpolator(fastOutSlowInInterpolator);
+      fShadowXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+        @Override
+        public void onAnimationUpdate(ValueAnimator valueAnimator) {
+          fShadowAnimatedCX = (int) valueAnimator.getAnimatedValue();
+        }
+      });
+
+      fShadowReverseAnimation = ValueAnimator.ofInt(shadowAnimationEnd, shadowAnimationStart);
+      fShadowReverseAnimation.setDuration(mShadowReverseAnimationDuration);
+      fShadowReverseAnimation.setStartDelay(mLightPassDuration + mShadowReverseAnimationDelay);
+      fShadowReverseAnimation.setInterpolator(fastOutSlowInInterpolator);
+      fShadowReverseAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+        @Override
+        public void onAnimationUpdate(ValueAnimator valueAnimator) {
+          fShadowAnimatedCX = (int) valueAnimator.getAnimatedValue();
           invalidate();
         }
       });
-  
-      lightAlphaAnimator = ValueAnimator.ofInt(mMinLightAlpha, mMaxLightAlpha);
-      lightAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
-      lightAlphaAnimator.setInterpolator(cycleInterpolator);
-      lightAlphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-        @Override
-        public void onAnimationUpdate(ValueAnimator valueAnimator) {
-          fLightAlpha = (int) valueAnimator.getAnimatedValue();
-        }
-      });
-  
-      if (mShowShadow) {
-        fShadowAlphaAnimator = ValueAnimator.ofInt(mMinShadowAlpha, mMaxShadowAlpha);
-        fShadowAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
-        fShadowAlphaAnimator.setInterpolator(cycleInterpolator);
-        fShadowAlphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-          @Override
-          public void onAnimationUpdate(ValueAnimator valueAnimator) {
-            fShadowAlphaAdd = (int) valueAnimator.getAnimatedValue();
-          }
-        });
-        
-        fShadowXAnimator = ValueAnimator.ofInt(shadowAnimationStart, shadowAnimationEnd);
-        fShadowXAnimator.setDuration(mLightPassDuration);
-        fShadowXAnimator.setInterpolator(fastOutSlowInInterpolator);
-        fShadowXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-          @Override
-          public void onAnimationUpdate(ValueAnimator valueAnimator) {
-            fShadowAnimatedCX = (int) valueAnimator.getAnimatedValue();
-          }
-        });
-  
-        fShadowReverseAnimation = ValueAnimator.ofInt(shadowAnimationEnd, shadowAnimationStart);
-        fShadowReverseAnimation.setDuration(mShadowReverseAnimationDuration);
-        fShadowReverseAnimation.setStartDelay(mLightPassDuration + mShadowReverseAnimationDelay);
-        fShadowReverseAnimation.setInterpolator(fastOutSlowInInterpolator);
-        fShadowReverseAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-          @Override
-          public void onAnimationUpdate(ValueAnimator valueAnimator) {
-            fShadowAnimatedCX = (int) valueAnimator.getAnimatedValue();
-            invalidate();
-          }
-        });
-      }
-      
-      fAnimatorSet = new AnimatorSet();
-      fAnimatorSet.play(reflectionXAnimator);
-      fAnimatorSet.play(lightAlphaAnimator);
-      if (mShowShadow) {
-        fAnimatorSet.play(fShadowXAnimator);
-        fAnimatorSet.play(fShadowAlphaAnimator);
-        fAnimatorSet.play(fShadowReverseAnimation);
-      }
-      
-      // Start the Runnable
-      if (mShowReflection)
-        fHandler.post(fRunnable);
-      
     }
+    
+    fAnimatorSet = new AnimatorSet();
+    fAnimatorSet.play(reflectionXAnimator);
+    fAnimatorSet.play(lightAlphaAnimator);
+    if (mShowShadow) {
+      fAnimatorSet.play(fShadowXAnimator);
+      fAnimatorSet.play(fShadowAlphaAnimator);
+      fAnimatorSet.play(fShadowReverseAnimation);
+    }
+    
+    // Start the Runnable
+    if (mAutoAnimate)
+      fHandler.post(fRunnable);
+    
   }
   
   @Override
   protected void onDraw(Canvas canvas) {
     
     if (fBitmapImage != null) {
-      if (mShowReflection) getAnimatedBitmap();
+      if (mAutoAnimate) getAnimatedBitmap();
       
       fPaint.setXfermode(null);
   
-      // Draw shadow
+      // Draw shadow.
       if (mShowShadow) {
         fPaint.setColor(mShadowColor);
         fPaint.setAlpha(mShadowAlpha + fShadowAlphaAdd);
         canvas.drawCircle(fShadowAnimatedCX, fShadowCY, fShadowRadius, fPaint);
         fPaint.setAlpha(255);
-        fPaint.setMaskFilter(null);
       }
-      
-      // Draw border.
-      
   
-      // Draw image.
+      // Draw border and image.
       canvas.drawBitmap(fBitmapCircleImageAndBorder, 0, 0, fPaint);
       
       // Draw reflection.
-      if (mShowReflection) {
+      if (mAutoAnimate) {
         fPaint.setColor(mReflectionColor);
         fPaint.setAlpha(mReflectionAlpha);
         fPaint.setXfermode(null);
@@ -394,6 +337,70 @@ public class CircleImageView extends AppCompatImageView {
         canvas.drawBitmap(fBitmapAnimated, 0, 0, fPaint);
       }
     }
+  }
+  
+  private void generateBorderAndImageBitmap() {
+    int paddingLeft = getPaddingLeft();
+    int paddingTop = getPaddingTop();
+    int paddingRight = getPaddingRight();
+    int paddingBottom = getPaddingBottom();
+    
+    int centerX = fViewWidth / 2;
+    int centerY = fViewHeight / 2;
+    
+    fBorderCX = centerX + paddingLeft - paddingRight;
+    fBorderCY = centerY + paddingTop - paddingBottom;
+    fBorderDiameter = fDiameter - Math.max(paddingLeft + paddingRight, paddingTop + paddingBottom);
+    fBorderRadius = fBorderDiameter / 2;
+    
+    float imageDiameter = fBorderDiameter - mBorderSize * 2;
+    int imageRadius = (int)(imageDiameter / 2);
+    float imageWidth = fBitmapImage.getWidth();
+    float imageHeight = fBitmapImage.getHeight();
+    float smallDimension = Math.min(imageWidth, imageHeight);
+    float ratio = imageDiameter / smallDimension;
+    int fScaledImageWidth = (int)(imageWidth * ratio);
+    int fScaledImageHeight = (int)(imageHeight * ratio);
+    int bitmapLeft = (fViewWidth - fScaledImageWidth) / 2;
+    int bitmapTop = (fViewHeight - fScaledImageHeight) / 2;
+    
+    if (fBitmapImage != null) {
+      fBitmapImage = Bitmap.createScaledBitmap(
+          fBitmapImage, fScaledImageWidth, fScaledImageHeight, false);
+    }
+    
+    
+    
+    Bitmap bitmap = Bitmap.createBitmap(fViewWidth, fViewHeight, Bitmap.Config.ARGB_8888);
+    Canvas canvas = new Canvas(bitmap);
+    
+    fPaint.setXfermode(null);
+    fPaint.setAlpha(255);
+    
+    // Draw image
+    canvas.drawBitmap(fBitmapImage, bitmapLeft, bitmapTop, fPaint);
+    
+    // Draw circle image mask
+    fPaint.setXfermode(DST_OUT);
+    canvas.drawBitmap(
+        generateCircleMaskBitmap(fViewWidth, fViewHeight, fBorderCX, fBorderCY, imageRadius),
+        0, 0, fPaint);
+    
+    
+    
+    
+    fBitmapCircleImageAndBorder = Bitmap.createBitmap(fViewWidth, fViewHeight, Bitmap.Config.ARGB_8888);
+    Canvas imageCanvas = new Canvas(fBitmapCircleImageAndBorder);
+    fPaint.setXfermode(null);
+    
+    // Draw border
+    if (mBorderSize > 0) {
+      imageCanvas.drawCircle(fBorderCX, fBorderCY, fBorderRadius, fBorderPaint);
+    }
+    
+    // Draw circle image
+    imageCanvas.drawBitmap(bitmap, 0, 0, fPaint);
+    
   }
   
   private void getAnimatedBitmap(){
@@ -453,6 +460,11 @@ public class CircleImageView extends AppCompatImageView {
     }
   }
   
+  public void reflect() {
+    mAutoAnimate = true;
+    fAnimatorSet.start();
+  }
+  
   private void getAttrs() {
     mShowShadow = fTypedArray.getBoolean(R.styleable.CircleImageView_showShadow, mShowShadow);
     mShadowColor = fTypedArray.getColor(R.styleable.CircleImageView_shadowColor, mShadowColor);
@@ -464,7 +476,7 @@ public class CircleImageView extends AppCompatImageView {
     mBorderColor = fTypedArray.getColor(R.styleable.CircleImageView_borderColor, mBorderColor);
     mBorderSize = fTypedArray.getDimensionPixelSize(R.styleable.CircleImageView_borderSize, mBorderSize);
   
-    mShowReflection = fTypedArray.getBoolean(R.styleable.CircleImageView_showReflection, mShowReflection);
+    mAutoAnimate = fTypedArray.getBoolean(R.styleable.CircleImageView_autoAnimate, mAutoAnimate);
     mReflectionColor = fTypedArray.getColor(R.styleable.CircleImageView_reflectionColor, mReflectionColor);
     mReflectionAlpha = fTypedArray.getInt(R.styleable.CircleImageView_reflectionAlpha, mReflectionAlpha);
   
@@ -483,6 +495,12 @@ public class CircleImageView extends AppCompatImageView {
         fTypedArray.getInt(R.styleable.CircleImageView_lightDirection, mLightDirection.id));
     
     fTypedArray.recycle();
+  }
+  
+  public void setImageBitmap(Bitmap bm) {
+    fBitmapImage = bm;
+    generateBorderAndImageBitmap();
+    invalidate();
   }
   
   public int getShadowXDiff() {
@@ -545,6 +563,48 @@ public class CircleImageView extends AppCompatImageView {
     return this;
   }
   
+  public CircleImageView setBorderLinearGradient(int w, int h, int[] colors, float[] positions, float angle) {
+    int x0 = 0, x1 = 0, y0 = 0, y1 = 0;
+    float centerY = h / 2;
+    
+    if (angle > 0 && angle <= 45) {
+      x0 = w; x1 = 0;
+      y0 = (int)(centerY - (h / 90 * angle));
+      y1 = (int)(centerY + (h / 90 * angle));
+      
+    } else if (angle > 45 && angle <= 135) {
+      angle = angle - 45;
+      y0 = 0; y1 = h;
+      x0 = (int)(w - (w / 90 * angle));
+      x1 = (int)(w / 90 * angle);
+  
+    } else if (angle > 135 && angle <= 225) {
+      angle = angle - 135;
+      x0 = 0; x1 = w;
+      y0 = (int)(h / 90 * angle);
+      y1 = (int)(h - (h / 90 * angle));
+      
+    } else if (angle > 225 && angle <= 315) {
+      angle = angle - 225;
+      y0 = h; y1 = 0;
+      x0 = (int)(w / 90 * angle);
+      x1 = (int)(w - (w / 90 * angle));
+      
+    } else {
+      angle = angle - 315;
+      x0 = w; x1 = 0;
+      y0 = (int)(h - (h / 90 * angle));
+      y1 = (int)(h / 90 * angle);
+      
+    }
+    
+    LinearGradient linearGradient = new LinearGradient(
+        x0, y0, x1, y1, colors, positions, Shader.TileMode.CLAMP);
+    fBorderPaint.setShader(linearGradient);
+    requestLayout();
+    return this;
+  }
+  
   public int getBorderColor() {
     return mBorderColor;
   }
@@ -563,6 +623,10 @@ public class CircleImageView extends AppCompatImageView {
     mBorderSize = borderSize;
     invalidate();
     return this;
+  }
+  
+  public int getBorderDiameter() {
+    return fBorderDiameter;
   }
   
   public int getReflectionColor() {
@@ -585,13 +649,13 @@ public class CircleImageView extends AppCompatImageView {
     return this;
   }
   
-  public boolean isShowReflection() {
-    return mShowReflection;
+  public boolean isAutoAnimate() {
+    return mAutoAnimate;
   }
   
-  public CircleImageView setShowReflection(boolean showReflection) {
-    mShowReflection = showReflection;
-    invalidate();
+  public CircleImageView setAutoAnimate(boolean autoAnimate) {
+    mAutoAnimate = autoAnimate;
+    requestLayout();
     return this;
   }
   
