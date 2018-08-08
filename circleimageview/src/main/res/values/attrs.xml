@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <declare-styleable name="CircleImageView">
+        <attr name="image" format="reference"/>
+
         <attr name="showShadow" format="reference|boolean" />
         <attr name="shadowColor" format="reference|color" />
         <attr name="shadowXDiff" format="reference|dimension" />
