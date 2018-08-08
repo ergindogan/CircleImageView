@@ -5,7 +5,6 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
-import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
@@ -16,23 +15,23 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v4.graphics.drawable.RoundedBitmapDrawable;
 import android.support.v4.view.animation.FastOutSlowInInterpolator;
-import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
+import android.view.View;
 import android.view.animation.CycleInterpolator;
 
 import volkanatalan.circleimageview.R;
-import volkanatalan.library.Calc;
+import volkanatalan.circleimageview.models.Calc;
 
-public class CircleImageView extends AppCompatImageView {
+public class CircleImageView extends View {
   // "f" means the variable is a field.
   // "m" means the variable is a field, it has getter-setter methods and an attribute.
   private Context fContext;
   private TypedArray fTypedArray;
+  private Drawable drawable;
   private Bitmap fBitmapImage, fBitmapCircleImageAndBorder, fBitmapCircleMask, fBitmapAnimated;
   private Canvas fCanvasAnimated;
   private Paint fPaint, fBorderPaint, fLightPaint;
@@ -52,7 +51,6 @@ public class CircleImageView extends AppCompatImageView {
   private boolean mShowShadow = true;
   
   private int mBorderColor = Color.BLACK;
-  private GradientDrawable gradientDrawable;
   private int fBorderCX, fBorderCY, fBorderRadius, mBorderSize, fBorderDiameter;
   
   private int mReflectionColor = Color.WHITE, mReflectionAlpha = 220;
@@ -190,131 +188,131 @@ public class CircleImageView extends AppCompatImageView {
     int centerX = w / 2;
   
     generateBorderAndImageBitmap();
-    
+  
     int shadowCX = fBorderCX + mShadowXDiff;
     fShadowCY = fBorderCY + mShadowYDiff;
     fShadowRadius = fBorderRadius + mShadowSize;
-    int shadowAnimationStart;
-    int shadowAnimationEnd;
-  
-    int reflectionWidth = fDiameter;
-    int reflectionHeight = fDiameter;
-    int reflectionPosStart;
-    int reflectionPosEnd;
-    int lightAlphaAnimationRepeatDelayDuration;
+    fShadowAnimatedCX = shadowCX;
     
-    if (mLightDirection == LightDirection.LEFT) {
-      reflectionPosStart = fBorderDiameter;
-      reflectionPosEnd = - reflectionWidth;
+    if (!isInEditMode()) {
+      int shadowAnimationStart;
+      int shadowAnimationEnd;
   
-      shadowAnimationStart = centerX - (shadowCX - centerX);
-      shadowAnimationEnd = shadowCX;
-      
-      lightAlphaAnimationRepeatDelayDuration = mLightPassDuration - (mLightPassDuration * 40 / 100);
-    } else {
-      reflectionPosStart = 0 - reflectionWidth;
-      reflectionPosEnd = fBorderDiameter;
+      int reflectionWidth = fDiameter;
+      int reflectionHeight = fDiameter;
+      int reflectionPosStart;
+      int reflectionPosEnd;
+      int lightAlphaAnimationRepeatDelayDuration;
   
-      shadowAnimationStart = shadowCX;
-      shadowAnimationEnd = centerX - (shadowCX - centerX);
-  
-      lightAlphaAnimationRepeatDelayDuration = mLightPassDuration;
-    }
-  
-    fShadowAnimatedCX = shadowAnimationStart;
-    fReflectionPos = reflectionPosStart;
-    int fCircleMaskRadius = fBorderRadius;
-  
-    ValueAnimator reflectionXAnimator;
-    ValueAnimator lightAlphaAnimator;
+      if (mLightDirection == LightDirection.LEFT) {
+        reflectionPosStart = fBorderDiameter;
+        reflectionPosEnd = -reflectionWidth;
     
-    fBitmapAnimated = Bitmap.createBitmap(fDiameter, fDiameter, Bitmap.Config.ARGB_8888);
-    fCanvasAnimated = new Canvas(fBitmapAnimated);
+        shadowAnimationStart = centerX - (shadowCX - centerX);
+        shadowAnimationEnd = shadowCX;
+    
+        lightAlphaAnimationRepeatDelayDuration = mLightPassDuration - (mLightPassDuration * 40 / 100);
+      } else {
+        reflectionPosStart = 0 - reflectionWidth;
+        reflectionPosEnd = fBorderDiameter;
+    
+        shadowAnimationStart = shadowCX;
+        shadowAnimationEnd = centerX - (shadowCX - centerX);
+    
+        lightAlphaAnimationRepeatDelayDuration = mLightPassDuration;
+      }
   
-    fBitmapCircleMask = generateCircleMaskBitmap(
-        reflectionWidth, reflectionHeight, fBorderCX, fBorderCY, fCircleMaskRadius);
-
-    FastOutSlowInInterpolator fastOutSlowInInterpolator = new FastOutSlowInInterpolator();
-    CycleInterpolator cycleInterpolator = new CycleInterpolator(0.5f);
-
-    reflectionXAnimator = ValueAnimator.ofInt(reflectionPosStart, reflectionPosEnd);
-    reflectionXAnimator.setDuration(mLightPassDuration);
-    reflectionXAnimator.setInterpolator(fastOutSlowInInterpolator);
-    reflectionXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-      @Override
-      public void onAnimationUpdate(ValueAnimator valueAnimator) {
-        fReflectionPos = (int)valueAnimator.getAnimatedValue();
-        invalidate();
-      }
-    });
-
-    lightAlphaAnimator = ValueAnimator.ofInt(mMinLightAlpha, mMaxLightAlpha);
-    lightAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
-    lightAlphaAnimator.setInterpolator(cycleInterpolator);
-    lightAlphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-      @Override
-      public void onAnimationUpdate(ValueAnimator valueAnimator) {
-        fLightAlpha = (int) valueAnimator.getAnimatedValue();
-      }
-    });
-
-    if (mShowShadow) {
-      fShadowAlphaAnimator = ValueAnimator.ofInt(mMinShadowAlpha, mMaxShadowAlpha);
-      fShadowAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
-      fShadowAlphaAnimator.setInterpolator(cycleInterpolator);
-      fShadowAlphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+      fShadowAnimatedCX = shadowAnimationStart;
+      fReflectionPos = reflectionPosStart;
+      int fCircleMaskRadius = fBorderRadius;
+  
+      ValueAnimator reflectionXAnimator;
+      ValueAnimator lightAlphaAnimator;
+  
+      fBitmapAnimated = Bitmap.createBitmap(fDiameter, fDiameter, Bitmap.Config.ARGB_8888);
+      fCanvasAnimated = new Canvas(fBitmapAnimated);
+  
+      fBitmapCircleMask = generateCircleMaskBitmap(
+          reflectionWidth, reflectionHeight, fBorderCX, fBorderCY, fCircleMaskRadius);
+  
+      FastOutSlowInInterpolator fastOutSlowInInterpolator = new FastOutSlowInInterpolator();
+      CycleInterpolator cycleInterpolator = new CycleInterpolator(0.5f);
+  
+      reflectionXAnimator = ValueAnimator.ofInt(reflectionPosStart, reflectionPosEnd);
+      reflectionXAnimator.setDuration(mLightPassDuration);
+      reflectionXAnimator.setInterpolator(fastOutSlowInInterpolator);
+      reflectionXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
         @Override
         public void onAnimationUpdate(ValueAnimator valueAnimator) {
-          fShadowAlphaAdd = (int) valueAnimator.getAnimatedValue();
-        }
-      });
-      
-      fShadowXAnimator = ValueAnimator.ofInt(shadowAnimationStart, shadowAnimationEnd);
-      fShadowXAnimator.setDuration(mLightPassDuration);
-      fShadowXAnimator.setInterpolator(fastOutSlowInInterpolator);
-      fShadowXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-        @Override
-        public void onAnimationUpdate(ValueAnimator valueAnimator) {
-          fShadowAnimatedCX = (int) valueAnimator.getAnimatedValue();
-        }
-      });
-
-      fShadowReverseAnimation = ValueAnimator.ofInt(shadowAnimationEnd, shadowAnimationStart);
-      fShadowReverseAnimation.setDuration(mShadowReverseAnimationDuration);
-      fShadowReverseAnimation.setStartDelay(mLightPassDuration + mShadowReverseAnimationDelay);
-      fShadowReverseAnimation.setInterpolator(fastOutSlowInInterpolator);
-      fShadowReverseAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-        @Override
-        public void onAnimationUpdate(ValueAnimator valueAnimator) {
-          fShadowAnimatedCX = (int) valueAnimator.getAnimatedValue();
+          fReflectionPos = (int) valueAnimator.getAnimatedValue();
           invalidate();
         }
       });
+  
+      lightAlphaAnimator = ValueAnimator.ofInt(mMinLightAlpha, mMaxLightAlpha);
+      lightAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
+      lightAlphaAnimator.setInterpolator(cycleInterpolator);
+      lightAlphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+        @Override
+        public void onAnimationUpdate(ValueAnimator valueAnimator) {
+          fLightAlpha = (int) valueAnimator.getAnimatedValue();
+        }
+      });
+  
+      if (mShowShadow) {
+        fShadowAlphaAnimator = ValueAnimator.ofInt(mMinShadowAlpha, mMaxShadowAlpha);
+        fShadowAlphaAnimator.setDuration(lightAlphaAnimationRepeatDelayDuration);
+        fShadowAlphaAnimator.setInterpolator(cycleInterpolator);
+        fShadowAlphaAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+          @Override
+          public void onAnimationUpdate(ValueAnimator valueAnimator) {
+            fShadowAlphaAdd = (int) valueAnimator.getAnimatedValue();
+          }
+        });
+    
+        fShadowXAnimator = ValueAnimator.ofInt(shadowAnimationStart, shadowAnimationEnd);
+        fShadowXAnimator.setDuration(mLightPassDuration);
+        fShadowXAnimator.setInterpolator(fastOutSlowInInterpolator);
+        fShadowXAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+          @Override
+          public void onAnimationUpdate(ValueAnimator valueAnimator) {
+            fShadowAnimatedCX = (int) valueAnimator.getAnimatedValue();
+          }
+        });
+    
+        fShadowReverseAnimation = ValueAnimator.ofInt(shadowAnimationEnd, shadowAnimationStart);
+        fShadowReverseAnimation.setDuration(mShadowReverseAnimationDuration);
+        fShadowReverseAnimation.setStartDelay(mLightPassDuration + mShadowReverseAnimationDelay);
+        fShadowReverseAnimation.setInterpolator(fastOutSlowInInterpolator);
+        fShadowReverseAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+          @Override
+          public void onAnimationUpdate(ValueAnimator valueAnimator) {
+            fShadowAnimatedCX = (int) valueAnimator.getAnimatedValue();
+            invalidate();
+          }
+        });
+      }
+  
+      fAnimatorSet = new AnimatorSet();
+      fAnimatorSet.play(reflectionXAnimator);
+      fAnimatorSet.play(lightAlphaAnimator);
+      if (mShowShadow) {
+        fAnimatorSet.play(fShadowXAnimator);
+        fAnimatorSet.play(fShadowAlphaAnimator);
+        fAnimatorSet.play(fShadowReverseAnimation);
+      }
+  
+      // Start the Runnable
+      if (mAutoAnimate)
+        fHandler.post(fRunnable);
     }
-    
-    fAnimatorSet = new AnimatorSet();
-    fAnimatorSet.play(reflectionXAnimator);
-    fAnimatorSet.play(lightAlphaAnimator);
-    if (mShowShadow) {
-      fAnimatorSet.play(fShadowXAnimator);
-      fAnimatorSet.play(fShadowAlphaAnimator);
-      fAnimatorSet.play(fShadowReverseAnimation);
-    }
-    
-    // Start the Runnable
-    if (mAutoAnimate)
-      fHandler.post(fRunnable);
-    
   }
   
   @Override
   protected void onDraw(Canvas canvas) {
-    
     if (fBitmapImage != null) {
-      if (mAutoAnimate) getAnimatedBitmap();
-      
       fPaint.setXfermode(null);
-  
+      
       // Draw shadow.
       if (mShowShadow) {
         fPaint.setColor(mShadowColor);
@@ -326,15 +324,20 @@ public class CircleImageView extends AppCompatImageView {
       // Draw border and image.
       canvas.drawBitmap(fBitmapCircleImageAndBorder, 0, 0, fPaint);
       
-      // Draw reflection.
-      if (mAutoAnimate) {
-        fPaint.setColor(mReflectionColor);
-        fPaint.setAlpha(mReflectionAlpha);
-        fPaint.setXfermode(null);
-        fLightPaint.setAlpha(fLightAlpha);
-        canvas.drawCircle(fBorderCX, fBorderCY, fBorderRadius, fLightPaint);
-        fPaint.setXfermode(null);
-        canvas.drawBitmap(fBitmapAnimated, 0, 0, fPaint);
+      if (!isInEditMode()) {
+  
+        // Draw reflection.
+        if (mAutoAnimate) {
+          getAnimatedBitmap();
+          fPaint.setColor(mReflectionColor);
+          fPaint.setAlpha(mReflectionAlpha);
+          fPaint.setXfermode(null);
+          fLightPaint.setAlpha(fLightAlpha);
+          canvas.drawCircle(fBorderCX, fBorderCY, fBorderRadius, fLightPaint);
+          fPaint.setXfermode(null);
+          canvas.drawBitmap(fBitmapAnimated, 0, 0, fPaint);
+        }
+        //canvas.drawBitmap(fBitmapCircleImageAndBorder, 0, 0, fPaint);
       }
     }
   }
@@ -439,7 +442,7 @@ public class CircleImageView extends AppCompatImageView {
     Canvas canvas = new Canvas(bitmapCircleMask);
     
     fPaint.setXfermode(null);
-    canvas.drawPaint(fPaint);
+    canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), fPaint);
   
     fPaint.setXfermode(DST_OUT);
     canvas.drawCircle(cx, cy, radius, fPaint);
@@ -447,8 +450,6 @@ public class CircleImageView extends AppCompatImageView {
   }
   
   private void loadBitmap() {
-    Drawable drawable = this.getDrawable();
-    
     if (drawable != null) {
       if (drawable instanceof RoundedBitmapDrawable) {
         RoundedBitmapDrawable roundedBitmapDrawable = (RoundedBitmapDrawable) drawable;
@@ -466,6 +467,8 @@ public class CircleImageView extends AppCompatImageView {
   }
   
   private void getAttrs() {
+    drawable = fTypedArray.getDrawable(R.styleable.CircleImageView_image);
+    
     mShowShadow = fTypedArray.getBoolean(R.styleable.CircleImageView_showShadow, mShowShadow);
     mShadowColor = fTypedArray.getColor(R.styleable.CircleImageView_shadowColor, mShadowColor);
     mShadowXDiff = fTypedArray.getDimensionPixelSize(R.styleable.CircleImageView_shadowXDiff, mShadowXDiff);
