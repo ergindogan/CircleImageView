@@ -4,10 +4,13 @@ import android.animation.AnimatorSet;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
@@ -15,13 +18,20 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.support.media.ExifInterface;
+import android.net.Uri;
 import android.os.Handler;
+import android.provider.MediaStore;
 import android.support.annotation.Nullable;
 import android.support.v4.graphics.drawable.RoundedBitmapDrawable;
 import android.support.v4.view.animation.FastOutSlowInInterpolator;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 import android.view.animation.CycleInterpolator;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 import volkanatalan.circleimageview.R;
 import volkanatalan.circleimageview.models.Calc;
@@ -57,7 +67,7 @@ public class CircleImageView extends View {
   private int fReflectionPos, fLightAlpha = 0;
   private boolean mAutoAnimate = true;
   
-  private int mLightPassDuration = 1000, mAnimationRepeatDelay = 10000;
+  private int mLightPassDuration = 700, mAnimationRepeatDelay = 10000;
   private int mMinShadowAlpha = 0, mMaxShadowAlpha = 50;
   private int mShadowReverseAnimationDelay = 0, mShadowReverseAnimationDuration = mLightPassDuration;
   private int mMinLightAlpha = 0, mMaxLightAlpha = 100;
@@ -337,7 +347,6 @@ public class CircleImageView extends View {
           fPaint.setXfermode(null);
           canvas.drawBitmap(fBitmapAnimated, 0, 0, fPaint);
         }
-        //canvas.drawBitmap(fBitmapCircleImageAndBorder, 0, 0, fPaint);
       }
     }
   }
@@ -373,7 +382,6 @@ public class CircleImageView extends View {
     }
     
     
-    
     Bitmap bitmap = Bitmap.createBitmap(fViewWidth, fViewHeight, Bitmap.Config.ARGB_8888);
     Canvas canvas = new Canvas(bitmap);
     
@@ -390,8 +398,6 @@ public class CircleImageView extends View {
         0, 0, fPaint);
     
     
-    
-    
     fBitmapCircleImageAndBorder = Bitmap.createBitmap(fViewWidth, fViewHeight, Bitmap.Config.ARGB_8888);
     Canvas imageCanvas = new Canvas(fBitmapCircleImageAndBorder);
     fPaint.setXfermode(null);
@@ -403,7 +409,6 @@ public class CircleImageView extends View {
     
     // Draw circle image
     imageCanvas.drawBitmap(bitmap, 0, 0, fPaint);
-    
   }
   
   private void getAnimatedBitmap(){
@@ -500,6 +505,114 @@ public class CircleImageView extends View {
     fTypedArray.recycle();
   }
   
+  public static String getRealPathFromURI(Context context, Uri contentURI) {
+    String path= contentURI.getPath();
+    try {
+      Cursor cursor = context.getContentResolver().query(contentURI,
+          null, null, null, null);
+      cursor.moveToFirst();
+      String document_id = cursor.getString(0);
+      document_id = document_id.substring(document_id.lastIndexOf(":") + 1);
+      cursor.close();
+      
+      cursor = context.getContentResolver().query(
+          android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+          null, MediaStore.Images.Media._ID + " = ? ", new String[]{document_id}, null);
+      cursor.moveToFirst();
+      path = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DATA));
+      cursor.close();
+    }
+    catch(Exception e)
+    {
+      return path;
+    }
+    return path;
+  }
+  
+  public int getOrientation(Context context, Uri uri) {
+    ExifInterface exif = null;
+    try {
+      exif = new ExifInterface(getRealPathFromURI(context, uri));
+    return exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, 1);
+    
+    } catch (IOException e) {
+      e.printStackTrace();
+      return 0;
+    }
+  }
+  
+  public Bitmap getCorrectlyOrientedImage(Context context, Uri uri) throws IOException {
+    int MAX_IMAGE_DIMENSION = Math.min(fViewWidth, fViewHeight);
+    InputStream is = context.getContentResolver().openInputStream(uri);
+    BitmapFactory.Options dbo = new BitmapFactory.Options();
+    dbo.inJustDecodeBounds = true;
+    BitmapFactory.decodeStream(is, null, dbo);
+    is.close();
+    
+    int rotatedWidth, rotatedHeight, rotation;
+    int orientation = getOrientation(context, uri);
+    Log.d("orientation", orientation + "");
+  
+    if (orientation == 6) {
+      rotation = 90;
+    }
+    else if (orientation == 3) {
+      rotation = 180;
+    }
+    else if (orientation == 8) {
+      rotation = 270;
+    }
+    else rotation = 0;
+    
+    if (rotation == 90 || rotation == 270) {
+      rotatedWidth = dbo.outHeight;
+      rotatedHeight = dbo.outWidth;
+    } else {
+      rotatedWidth = dbo.outWidth;
+      rotatedHeight = dbo.outHeight;
+    }
+    
+    Bitmap srcBitmap;
+    is = context.getContentResolver().openInputStream(uri);
+    if (rotatedWidth > MAX_IMAGE_DIMENSION || rotatedHeight > MAX_IMAGE_DIMENSION) {
+      float widthRatio = ((float) rotatedWidth) / ((float) MAX_IMAGE_DIMENSION);
+      float heightRatio = ((float) rotatedHeight) / ((float) MAX_IMAGE_DIMENSION);
+      float maxRatio = Math.max(widthRatio, heightRatio);
+      
+      // Create the bitmap from file
+      BitmapFactory.Options options = new BitmapFactory.Options();
+      options.inSampleSize = (int) maxRatio;
+      srcBitmap = BitmapFactory.decodeStream(is, null, options);
+    } else {
+      srcBitmap = BitmapFactory.decodeStream(is);
+    }
+    is.close();
+    
+    /*
+     * if the orientation is not 0 (or -1, which means we don't know), we
+     * have to do a rotation.
+     */
+    if (rotation > 0) {
+      Matrix matrix = new Matrix();
+      matrix.postRotate(rotation);
+      
+      srcBitmap = Bitmap.createBitmap(srcBitmap, 0, 0, srcBitmap.getWidth(),
+          srcBitmap.getHeight(), matrix, true);
+    }
+    
+    return srcBitmap;
+  }
+  
+  public void setImageUri(Context context, Uri uri) {
+    try {
+      fBitmapImage = getCorrectlyOrientedImage(context, uri);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    generateBorderAndImageBitmap();
+    invalidate();
+  }
+  
   public void setImageBitmap(Bitmap bm) {
     fBitmapImage = bm;
     generateBorderAndImageBitmap();
@@ -567,7 +680,7 @@ public class CircleImageView extends View {
   }
   
   public CircleImageView setBorderLinearGradient(int w, int h, int[] colors, float[] positions, float angle) {
-    int x0 = 0, x1 = 0, y0 = 0, y1 = 0;
+    int x0, x1, y0, y1;
     float centerY = h / 2;
     
     if (angle > 0 && angle <= 45) {
