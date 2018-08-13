@@ -13,13 +13,13 @@
             android:id="@+id/cover_image"
             android:layout_width="match_parent"
             android:layout_height="@dimen/cover_h"
-            android:background="@drawable/mountain"
+            app:srcCompat="@drawable/mountain"
             android:scaleType="centerCrop" />
 
         <LinearLayout
             android:id="@+id/line"
             android:layout_width="match_parent"
-            android:layout_height="@dimen/civ_border_size"
+            android:layout_height="3dp"
             android:background="@drawable/line_gradient"
             android:orientation="horizontal"/>
     </LinearLayout>
@@ -31,8 +31,9 @@
         android:layout_alignParentBottom="true"
         android:padding="10dp"
         android:layout_marginLeft="@dimen/civ_margin_left"
-        app:srcCompat="@drawable/volkanatalan"
+        app:image="@drawable/volkanatalan"
         app:borderSize="@dimen/civ_border_size"
+        app:borderColor="@color/blue"
         app:lightDirection="Right"
         app:shadowXDiff="3dp"
         app:shadowYDiff="3dp"/>
