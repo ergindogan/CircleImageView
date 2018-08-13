@@ -52,6 +52,7 @@ public class CircleImageView extends View {
   private AnimatorSet fAnimatorSet;
   private PorterDuffXfermode DST_OUT = new PorterDuffXfermode(PorterDuff.Mode.DST_OUT);
   private PorterDuffXfermode CLR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
+  int MAX_IMAGE_DIMENSION;
   
   private int fViewWidth, fViewHeight, fDiameter;
   
@@ -109,6 +110,7 @@ public class CircleImageView extends View {
   }
   
   private void start() {
+    MAX_IMAGE_DIMENSION = Math.min(fViewWidth, fViewHeight);
     mBorderSize = Calc.dpToPx(fContext, 5);
     mShadowXDiff = Calc.dpToPx(fContext, 5);
     mShadowYDiff = Calc.dpToPx(fContext, 5);
@@ -505,7 +507,7 @@ public class CircleImageView extends View {
     fTypedArray.recycle();
   }
   
-  public static String getRealPathFromURI(Context context, Uri contentURI) {
+  public String getRealPathFromURI(Context context, Uri contentURI) {
     String path= contentURI.getPath();
     try {
       Cursor cursor = context.getContentResolver().query(contentURI,
@@ -530,19 +532,18 @@ public class CircleImageView extends View {
   }
   
   public int getOrientation(Context context, Uri uri) {
-    ExifInterface exif = null;
+    ExifInterface exif;
     try {
       exif = new ExifInterface(getRealPathFromURI(context, uri));
     return exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, 1);
     
     } catch (IOException e) {
       e.printStackTrace();
-      return 0;
+      return -1;
     }
   }
   
-  public Bitmap getCorrectlyOrientedImage(Context context, Uri uri) throws IOException {
-    int MAX_IMAGE_DIMENSION = Math.min(fViewWidth, fViewHeight);
+  public Bitmap getCorrectlyOrientedImage(Context context, Uri uri, int maxImageDimension) throws IOException {
     InputStream is = context.getContentResolver().openInputStream(uri);
     BitmapFactory.Options dbo = new BitmapFactory.Options();
     dbo.inJustDecodeBounds = true;
@@ -574,9 +575,9 @@ public class CircleImageView extends View {
     
     Bitmap srcBitmap;
     is = context.getContentResolver().openInputStream(uri);
-    if (rotatedWidth > MAX_IMAGE_DIMENSION || rotatedHeight > MAX_IMAGE_DIMENSION) {
-      float widthRatio = ((float) rotatedWidth) / ((float) MAX_IMAGE_DIMENSION);
-      float heightRatio = ((float) rotatedHeight) / ((float) MAX_IMAGE_DIMENSION);
+    if (rotatedWidth > maxImageDimension || rotatedHeight > maxImageDimension) {
+      float widthRatio = ((float) rotatedWidth) / ((float) maxImageDimension);
+      float heightRatio = ((float) rotatedHeight) / ((float) maxImageDimension);
       float maxRatio = Math.max(widthRatio, heightRatio);
       
       // Create the bitmap from file
@@ -605,7 +606,7 @@ public class CircleImageView extends View {
   
   public void setImageUri(Context context, Uri uri) {
     try {
-      fBitmapImage = getCorrectlyOrientedImage(context, uri);
+      fBitmapImage = getCorrectlyOrientedImage(context, uri, MAX_IMAGE_DIMENSION);
     } catch (IOException e) {
       e.printStackTrace();
     }
