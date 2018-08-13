@@ -1,14 +1,10 @@
 package volkanatalan.circleimageview.sample;
 
 import android.content.Intent;
-import android.graphics.Bitmap;
 import android.net.Uri;
-import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
-
-import java.io.IOException;
 
 import volkanatalan.circleimageview.views.CircleImageView;
 
@@ -22,9 +18,9 @@ public class MainActivity extends AppCompatActivity {
     setContentView(R.layout.activity_main);
     
     int civDiameter = getApplicationContext().getResources().getDimensionPixelSize(R.dimen.civ_diameter);
-    int colorBlue = getApplicationContext().getResources().getColor(R.color.blue);
-    int colorGreen = getApplicationContext().getResources().getColor(R.color.blue_light);
-    int[] colors = {colorBlue, colorGreen, colorBlue};
+    int blue = getApplicationContext().getResources().getColor(R.color.blue);
+    int lightBlue = getApplicationContext().getResources().getColor(R.color.blue_light);
+    int[] colors = {blue, lightBlue, blue};
     float[] positions = {0.2f, 0.5f, 0.8f};
     
     circleImageView = findViewById(R.id.circleImageView);
@@ -33,7 +29,6 @@ public class MainActivity extends AppCompatActivity {
     //.setBorderColor(getResources().getColor(R.color.image_border));
     //.setImageBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.volkanatalanprofileimage));
     //.setImageResource(R.drawable.volkanatalanprofileimage);
-    
   }
   
   @Override
@@ -41,16 +36,8 @@ public class MainActivity extends AppCompatActivity {
     super.onActivityResult(requestCode, resultCode, data);
     
     if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
-      
       Uri uri = data.getData();
-      
-      try {
-        Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
-  
-        circleImageView.setImageBitmap(bitmap);
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
+      circleImageView.setImageUri(getApplicationContext(), uri);
     }
   }
   
