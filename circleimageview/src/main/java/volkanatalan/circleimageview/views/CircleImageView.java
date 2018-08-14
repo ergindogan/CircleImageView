@@ -210,8 +210,8 @@ public class CircleImageView extends View {
       int shadowAnimationStart;
       int shadowAnimationEnd;
   
-      int reflectionWidth = fDiameter;
-      int reflectionHeight = fDiameter;
+      int reflectionWidth = fViewWidth;
+      int reflectionHeight = fViewHeight;
       int reflectionPosStart;
       int reflectionPosEnd;
       int lightAlphaAnimationRepeatDelayDuration;
@@ -241,7 +241,7 @@ public class CircleImageView extends View {
       ValueAnimator reflectionXAnimator;
       ValueAnimator lightAlphaAnimator;
   
-      fBitmapAnimated = Bitmap.createBitmap(fDiameter, fDiameter, Bitmap.Config.ARGB_8888);
+      fBitmapAnimated = Bitmap.createBitmap(fViewWidth, fViewHeight, Bitmap.Config.ARGB_8888);
       fCanvasAnimated = new Canvas(fBitmapAnimated);
   
       fBitmapCircleMask = generateCircleMaskBitmap(
@@ -422,7 +422,7 @@ public class CircleImageView extends View {
     // Draw reflection
     fPaint.setXfermode(null);
     fPaint.setColor(mReflectionColor);
-    fCanvasAnimated.drawPath(generateReflectionPath(fDiameter, fDiameter), fPaint);
+    fCanvasAnimated.drawPath(generateReflectionPath(fViewWidth, fViewHeight), fPaint);
   
     // Draw mask
     fPaint.setXfermode(DST_OUT);
