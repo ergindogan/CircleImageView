@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="cover_h">150dp</dimen>
+    <dimen name="civ_diameter">150dp</dimen>
+    <dimen name="header_h">200dp</dimen>
+    <dimen name="civ_margin_left">20dp</dimen>
+    <dimen name="civ_border_size">3dp</dimen>
+    <dimen name="tv_margin_bottom">50dp</dimen>
+    <dimen name="tv_padding">20dp</dimen>
+    <dimen name="tv_textSize">40sp</dimen>
+</resources>
