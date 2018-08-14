@@ -134,18 +134,21 @@ public class CircleImageView extends View {
     fLightPaint.setColor(mReflectionColor);
     fLightPaint.setAlpha(0);
 
+    // fHandler is needed for repeating animations automatically.
     fHandler = new Handler();
 
     fRunnable = new Runnable() {
       @Override
       public void run() {
+        // Start animations.
         fAnimatorSet.start();
     
-        // Repeat
+        // Repeat animations.
         fHandler.postDelayed(fRunnable, animationRepeatDelay);
       }
     };
   
+    // Load Bitmap from the drawable, which is set in the xml file.
     loadBitmap();
   }
   
@@ -198,7 +201,6 @@ public class CircleImageView extends View {
   @Override
   protected void onSizeChanged(int w, int h, int oldw, int oldh) {
   
-    MAX_IMAGE_DIMENSION = Math.min(fViewWidth, fViewHeight);
     fDiameter = Math.min(w, h);
     int centerX = w / 2;
   
@@ -376,16 +378,16 @@ public class CircleImageView extends View {
     float imageHeight = fBitmapImage.getHeight();
     float smallDimension = Math.min(imageWidth, imageHeight);
     float ratio = imageDiameter / smallDimension;
-    int fScaledImageWidth = (int)(imageWidth * ratio);
-    int fScaledImageHeight = (int)(imageHeight * ratio);
-    int bitmapLeft = (fViewWidth - fScaledImageWidth) / 2;
-    int bitmapTop = (fViewHeight - fScaledImageHeight) / 2;
+    int scaledImageWidth = (int)(imageWidth * ratio);
+    int scaledImageHeight = (int)(imageHeight * ratio);
+    int bitmapLeft = (fViewWidth - scaledImageWidth) / 2;
+    int bitmapTop = (fViewHeight - scaledImageHeight) / 2;
+    MAX_IMAGE_DIMENSION = Math.min(scaledImageWidth, scaledImageHeight);
     
     if (fBitmapImage != null) {
       fBitmapImage = Bitmap.createScaledBitmap(
-          fBitmapImage, fScaledImageWidth, fScaledImageHeight, false);
+          fBitmapImage, scaledImageWidth, scaledImageHeight, false);
     }
-    
     
     Bitmap bitmap = Bitmap.createBitmap(fViewWidth, fViewHeight, Bitmap.Config.ARGB_8888);
     Canvas canvas = new Canvas(bitmap);
@@ -393,10 +395,10 @@ public class CircleImageView extends View {
     fPaint.setXfermode(null);
     fPaint.setAlpha(255);
     
-    // Draw image
+    // Draw image.
     canvas.drawBitmap(fBitmapImage, bitmapLeft, bitmapTop, fPaint);
     
-    // Draw circle image mask
+    // Draw circle image mask.
     fPaint.setXfermode(DST_OUT);
     canvas.drawBitmap(
         generateCircleMaskBitmap(fViewWidth, fViewHeight, fBorderCX, fBorderCY, imageRadius),
@@ -407,27 +409,27 @@ public class CircleImageView extends View {
     Canvas imageCanvas = new Canvas(fBitmapCircleImageAndBorder);
     fPaint.setXfermode(null);
     
-    // Draw border
+    // Draw border.
     if (mBorderSize > 0) {
       imageCanvas.drawCircle(fBorderCX, fBorderCY, fBorderRadius, fBorderPaint);
     }
     
-    // Draw circle image
+    // Draw circle image.
     imageCanvas.drawBitmap(bitmap, 0, 0, fPaint);
   }
   
   private void getAnimatedBitmap(){
-    // Clear canvas
+    // Clear canvas.
     fPaint.setXfermode(CLR);
     fPaint.setColor(Color.TRANSPARENT);
     fCanvasAnimated.drawPaint(fPaint);
     
-    // Draw reflection
+    // Draw reflection.
     fPaint.setXfermode(null);
     fPaint.setColor(mReflectionColor);
     fCanvasAnimated.drawPath(generateReflectionPath(fViewWidth, fViewHeight), fPaint);
   
-    // Draw mask
+    // Draw mask.
     fPaint.setXfermode(DST_OUT);
     fCanvasAnimated.drawBitmap(fBitmapCircleMask, 0, 0, fPaint);
   }
@@ -451,9 +453,11 @@ public class CircleImageView extends View {
     Bitmap bitmapCircleMask = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
     Canvas canvas = new Canvas(bitmapCircleMask);
     
+    // Paint all the view.
     fPaint.setXfermode(null);
     canvas.drawRect(0, 0, w, h, fPaint);
   
+    // Clip out a circle.
     fPaint.setXfermode(DST_OUT);
     canvas.drawCircle(cx, cy, radius, fPaint);
     return bitmapCircleMask;
@@ -510,10 +514,10 @@ public class CircleImageView extends View {
     fTypedArray.recycle();
   }
   
-  public String getRealPathFromURI(Context context, Uri contentURI) {
-    String path= contentURI.getPath();
+  public String getRealPathFromURI(Context context, Uri uri) {
+    String path= uri.getPath();
     try {
-      Cursor cursor = context.getContentResolver().query(contentURI,
+      Cursor cursor = context.getContentResolver().query(uri,
           null, null, null, null);
       cursor.moveToFirst();
       String document_id = cursor.getString(0);
@@ -555,7 +559,6 @@ public class CircleImageView extends View {
     
     int rotatedWidth, rotatedHeight, rotation;
     int orientation = getOrientation(context, uri);
-    Log.d("orientation", orientation + "");
   
     if (orientation == 6) {
       rotation = 90;
@@ -583,7 +586,7 @@ public class CircleImageView extends View {
       float heightRatio = ((float) rotatedHeight) / ((float) maxImageDimension);
       float maxRatio = Math.max(widthRatio, heightRatio);
       
-      // Create the bitmap from file
+      // Create the Bitmap from file.
       BitmapFactory.Options options = new BitmapFactory.Options();
       options.inSampleSize = (int) maxRatio;
       srcBitmap = BitmapFactory.decodeStream(is, null, options);
@@ -592,10 +595,7 @@ public class CircleImageView extends View {
     }
     is.close();
     
-    /*
-     * if the orientation is not 0 (or -1, which means we don't know), we
-     * have to do a rotation.
-     */
+    //If the orientation is not 0 (or -1, which means we don't know), we have to rotate the image.
     if (rotation > 0) {
       Matrix matrix = new Matrix();
       matrix.postRotate(rotation);
