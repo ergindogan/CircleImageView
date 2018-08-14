@@ -110,7 +110,6 @@ public class CircleImageView extends View {
   }
   
   private void start() {
-    MAX_IMAGE_DIMENSION = Math.min(fViewWidth, fViewHeight);
     mBorderSize = Calc.dpToPx(fContext, 5);
     mShadowXDiff = Calc.dpToPx(fContext, 5);
     mShadowYDiff = Calc.dpToPx(fContext, 5);
@@ -190,12 +189,16 @@ public class CircleImageView extends View {
       fViewHeight = (int) smallDimension + mBorderSize * 2 + getPaddingTop() + getPaddingBottom();
       fViewWidth = fViewWidth > widthSize ? widthSize : fViewWidth;
       fViewHeight = fViewWidth > heightSize ? heightSize : fViewHeight;
+      smallDimension = Math.min(fViewWidth, fViewHeight);
+      fViewWidth = (int) smallDimension;
+      fViewHeight = (int) smallDimension;
     }
   }
   
   @Override
   protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-    
+  
+    MAX_IMAGE_DIMENSION = Math.min(fViewWidth, fViewHeight);
     fDiameter = Math.min(w, h);
     int centerX = w / 2;
   
@@ -449,7 +452,7 @@ public class CircleImageView extends View {
     Canvas canvas = new Canvas(bitmapCircleMask);
     
     fPaint.setXfermode(null);
-    canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), fPaint);
+    canvas.drawRect(0, 0, w, h, fPaint);
   
     fPaint.setXfermode(DST_OUT);
     canvas.drawCircle(cx, cy, radius, fPaint);
