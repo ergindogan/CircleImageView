@@ -26,7 +26,6 @@ import android.support.annotation.Nullable;
 import android.support.v4.graphics.drawable.RoundedBitmapDrawable;
 import android.support.v4.view.animation.FastOutSlowInInterpolator;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 import android.view.animation.CycleInterpolator;
 
@@ -550,7 +549,7 @@ public class CircleImageView extends View {
     }
   }
   
-  public Bitmap getCorrectlyOrientedImage(Context context, Uri uri, int maxImageDimension) throws IOException {
+  public Bitmap generateOrientedImage(Context context, Uri uri, int maxImageDimension) throws IOException {
     InputStream is = context.getContentResolver().openInputStream(uri);
     BitmapFactory.Options dbo = new BitmapFactory.Options();
     dbo.inJustDecodeBounds = true;
@@ -607,20 +606,22 @@ public class CircleImageView extends View {
     return srcBitmap;
   }
   
-  public void setImageUri(Context context, Uri uri) {
+  public CircleImageView setImageUri(Context context, Uri uri) {
     try {
-      fBitmapImage = getCorrectlyOrientedImage(context, uri, MAX_IMAGE_DIMENSION);
+      fBitmapImage = generateOrientedImage(context, uri, MAX_IMAGE_DIMENSION);
     } catch (IOException e) {
       e.printStackTrace();
     }
     generateBorderAndImageBitmap();
     invalidate();
+    return this;
   }
   
-  public void setImageBitmap(Bitmap bm) {
+  public CircleImageView setImageBitmap(Bitmap bm) {
     fBitmapImage = bm;
     generateBorderAndImageBitmap();
     invalidate();
+    return this;
   }
   
   public int getShadowXDiff() {
