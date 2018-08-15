@@ -13,6 +13,25 @@ CircleImageView has a reflection animation. As you can play the animation automa
 You can adjust the border thickness of CircleImageView and add gradient to it easily. To adjust the thickness write `app:borderSize="5dp"` in xml file or call `setBorderSize(int borderSize)` method in java file. To set gradient to border call `setBorderLinearGradient(int w, int h, int[] colors, float[] positions, float angle)` method in java file.
 
 ## Usage
+Add the JitPack repository to your build file
+```
+allprojects {
+   repositories {
+      ...
+      maven { url 'https://jitpack.io' }
+   }
+}
+```
+
+<br>
+
+Add the dependency
+```
+dependencies {
+    implementation 'com.github.thehorsebuyer:CircleImageView:v1.0'
+}
+```
+
 ### XML
 ```XML
 <volkanatalan.circleimageview.views.CircleImageView
